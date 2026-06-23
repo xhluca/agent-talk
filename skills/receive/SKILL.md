@@ -1,5 +1,5 @@
 ---
-description: Read incoming retalk messages from this session's user's DESIGNATED sender(s) — one-shot, or as a background --follow reader that PUSHES new messages into the session in real time. agent-talk only ever receives from specific saved peers, never the whole mailbox (safety). `<user>` is this session's user directory (absolute path; from init). Use to check mail or stay reachable.
+description: Read incoming retalk messages from this session's user's DESIGNATED sender(s) — one-shot, or as a background --follow reader that surfaces new messages in the session as they arrive (on your next turn). agent-talk only ever receives from specific saved peers, never the whole mailbox (safety). `<user>` is this session's user directory (absolute path; from init). Use to check mail or stay reachable.
 ---
 
 # receive — read messages (`receive`, or `receive follow …`)
@@ -41,9 +41,14 @@ only from trusted peers).
 - `--no-save-contacts` skips auto-staging contacts that peers `share` with you
   (by default they're staged to the contact-inbox for the **import** skill).
 
-## Background follow — push, real-time (per peer)
+## Background follow (per peer)
 A background `--follow` reader scoped to one peer, writing this user's spool; the
-plugin's inbox monitor streams each new line into the session.
+plugin's inbox monitor streams each new line into the session as it arrives. Be
+precise about what "push" does: the monitor injects new messages as **background
+context**, but it can't make the agent speak on its own — they surface on your
+**next turn** (the next time you message the agent), not as a spontaneous ping.
+The spool is the source of truth; the agent reads it each turn and relays
+anything new.
 
 `receive follow <peer>` — start (idempotent; survives sessions until stopped):
 ```
@@ -72,9 +77,12 @@ echo "--- recent messages (spool) ---"
 tail -n 20 "$D/inbox.ndjson" 2>/dev/null || echo "(none yet)"
 ```
 
-The spool (`<user>/inbox.ndjson`) is the durable record;
-push (the monitor) is best-effort + interactive-CLI only, so reading the spool
-always shows every delivered message.
+The spool (`<user>/inbox.ndjson`) is the durable record; the monitor's push is
+best-effort, interactive-CLI only, and (as above) can't prompt the agent
+unprompted — so reading the spool is the reliable way to never miss one. For
+genuine proactive delivery (the agent pinging you the moment a peer writes, with
+no turn from you), use a scheduled wake-up/loop that polls the spool on an
+interval.
 
 ## Always-on (survive reboots)
 A systemd user service running the scoped follower (the store holds the relay):

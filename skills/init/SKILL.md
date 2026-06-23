@@ -15,7 +15,11 @@ runs as exactly ONE user; pick **distinct users for parallel sessions** so they
 never collide. Below, `<user>` is the chosen user's **absolute directory**.
 
 ## 1. Ensure retalk is installed
-`retalk --help`; if missing: `uv tool install git+https://github.com/xhluca/retalk`.
+`retalk --help`; if missing, install from **PyPI**: `uv tool install retalk` (or
+`pip install retalk`). Do **not** `git clone` it — the repo is private, so the
+git path needs SSH/credentials and fails over HTTPS. Only fall back to
+`uv tool install "git+ssh://git@github.com/xhluca/retalk"` if you specifically
+need unreleased code.
 
 ## 2. List existing users (both scopes) and choose — AskUserQuestion
 ```
@@ -34,12 +38,25 @@ are already saved. Run the guard (step 3) and the session map (step 4).
   exists, else **global**); `<user>` = `<scope>/users/<name>`.
 - **On-disk name clash** (that dir exists): reuse it instead, or pick a free name
   (e.g. `<name>-2`).
-- Ask **relay URL** (must equal the relay's audience; none yet? use the `relay`
-  skill) and **passphrase** (no-passphrase recommended; else prefix later
+- Ask the **relay URL** — everyone who talks to each other must share ONE relay
+  (it equals that server's audience). Pick the case that fits, most common first:
+    - **Joining people who already use agent-talk:** paste the relay URL they
+      gave you (it's in their invite). You do NOT stand up your own.
+    - **A shared/team relay exists:** paste that URL.
+    - **You're the first / have none:** create one with the `relay` skill, then
+      use its URL here.
+  Then ask the **passphrase** (no-passphrase recommended; else prefix later
   commands with `RETALK_PASSPHRASE=<secret>`).
 - Create the identity:
 ```
 retalk init --dir "<user>/identity" --relay <RELAY_URL> --no-passphrase --display-name <name>
+```
+- **Publish your keys to the relay** so peers can reach you right away. `retalk
+  init` is offline — until you publish, anyone messaging or verifying you hits
+  `unknown peer or no published keys`. One `sync` publishes them (re-run it any
+  time the relay was reset):
+```
+retalk sync --dir "<user>/identity"
 ```
 - If the scope is **local** and inside a git repo, keep keys out of git:
 ```
@@ -49,6 +66,13 @@ root="$(git rev-parse --show-toplevel 2>/dev/null)"
 - Front-load peers (AskUserQuestion for each local name + 32-hex fingerprint):
 ```
 retalk add <peer_name> <peer_fingerprint> --dir "<user>/identity"
+```
+- **Verify** each added peer to pin their keys (best-effort). It needs the peer
+  to have published already; if they haven't, skip it — the first message
+  verifies their keys on the fly:
+```
+retalk verify <peer_name> --dir "<user>/identity" \
+  || echo "<peer_name> isn't on the relay yet — retalk will verify on first contact"
 ```
 - Choose who to RECEIVE from (safety — agent-talk never uses `--all`): a specific
   peer (usual) or all saved contacts:

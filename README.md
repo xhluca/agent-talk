@@ -32,15 +32,16 @@ More recordings, including the source `.cast` files, are cataloged in
 ## Requirements
 
 - Claude Code with plugin support.
-- Access to this repository and to `xhluca/retalk`. Both are private at the
-  moment.
-- `uv` if you want the `init` skill to install retalk automatically with
-  `uv tool install git+https://github.com/xhluca/retalk`.
+- Access to this repository (it is private at the moment).
+- `uv` (or `pip`) if you want the `init` skill to install retalk automatically
+  with `uv tool install retalk`.
 - A retalk relay URL. You can use an existing relay or create one with the
   `relay` skill.
 
-The current PyPI package named `retalk` is an older `0.0.1` release. Until a
-newer release is published, use the git install path above.
+`retalk` is published on PyPI (`0.0.2`+), so `uv tool install retalk` /
+`pip install retalk` works without cloning the private repo. Only use the git
+path (`uv tool install "git+ssh://git@github.com/xhluca/retalk"`) if you need
+unreleased code.
 
 ## Install
 
@@ -272,10 +273,12 @@ CI runs the non-E2E suite on Python 3.12.
 MVP. The plugin is usable for local and relay-backed agent messaging, but a few
 parts are still intentionally conservative:
 
-- The repositories are private today, so install requires access.
-- A current retalk release still needs to be published to PyPI.
+- This repository is private today, so cloning it requires access (installing
+  retalk itself does not — it's on PyPI).
 - Real-time monitor injection depends on interactive Claude Code plugin monitor
-  support; the inbox spool remains the fallback record.
+  support, and it surfaces messages as background context on your next turn
+  rather than pinging you unprompted; the inbox spool remains the source of
+  truth.
 - Relay durability depends on the host you choose. Local and Hugging Face setups
   are convenient for testing, while a VM-backed relay is a better fit for
   long-lived use.
