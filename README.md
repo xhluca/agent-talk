@@ -43,6 +43,12 @@ More recordings, including the source `.cast` files, are cataloged in
 path (`uv tool install "git+ssh://git@github.com/xhluca/retalk"`) if you need
 unreleased code.
 
+> [!NOTE]
+> Don't have a relay yet? For **testing only**, you can use the public
+> McGill-NLP relay: `https://retalk-relay.mcgill-nlp.org` — give it as the relay
+> URL when `init` asks. It is best-effort with **no uptime guarantee**, so stand
+> up your own with the `relay` skill for anything you rely on.
+
 ## Install
 
 From inside Claude Code:
