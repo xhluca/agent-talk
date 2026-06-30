@@ -83,16 +83,23 @@ SUGGEST="$U-$A-$P"                                                  # -> xlu41-c
   rest. A lost passphrase is **unrecoverable** and is never sent to the relay, so
   wherever it is stored is the identity's security boundary. Offer three options
   via **AskUserQuestion**, recommending the first:
-    - **Claude-managed (recommended)** — you generate a strong random secret and
-      store it for the user (project-local, under `./.claude/`), so they never
-      type or remember it yet keys stay encrypted at rest:
+    - **Claude-managed (recommended)** — generate a strong random secret and store
+      it for the user, so they never type or remember it yet keys stay encrypted at
+      rest. Ask **where to store it** (AskUserQuestion), recommending the first:
+        - **Beside the identity (recommended)** — `<user>/passphrase`; it travels
+          with the identity at its own scope, so it always resolves wherever that
+          identity is used — no global/local mismatch.
+        - **Project-local** — `<project>/.claude/agent-talk/passphrases/<name>`;
+          scoped to this project only.
+        - **Global** — `~/.claude/agent-talk/passphrases/<name>`; one store for all
+          identities, reachable from any project.
+      Then generate it `0600`, and if it lands inside a git repo keep it out of git:
 ```
-PP_DIR="$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.claude/agent-talk/passphrases"
-mkdir -p "$PP_DIR"; PP_FILE="$PP_DIR/<name>"
+PP_FILE=<the path chosen above, e.g. "<user>/passphrase">
+mkdir -p "$(dirname "$PP_FILE")"
 ( umask 077; python3 -c "import secrets;print(secrets.token_urlsafe(32))" > "$PP_FILE" )  # generate once; never echo it
-root="$(git rev-parse --show-toplevel 2>/dev/null)"                                       # keep the secret out of git
-[ -n "$root" ] && { grep -qxF '.claude/agent-talk/passphrases/' "$root/.gitignore" 2>/dev/null \
-  || echo '.claude/agent-talk/passphrases/' >> "$root/.gitignore"; }
+root="$(git rev-parse --show-toplevel 2>/dev/null)"                                       # if inside a repo, gitignore the secret
+case "${root:+$PP_FILE}" in "$root"/*) p="${PP_FILE#"$root"/}"; grep -qxF "$p" "$root/.gitignore" 2>/dev/null || echo "$p" >> "$root/.gitignore";; esac
 ```
       Later commands unlock it inline: `RETALK_PASSPHRASE="$(cat "$PP_FILE")"`.
       Back up `$PP_FILE` to preserve the identity — losing it loses the keys.
