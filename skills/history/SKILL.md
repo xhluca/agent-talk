@@ -22,3 +22,7 @@ retalk keeps no log unless you opt in: pass `--save-messages` on `send` and/or
 mail; `history` is the sealed, decrypt-on-demand record of **both** directions.
 
 > `<user>` = this session's **user directory** — an absolute path resolved at **init** (e.g. `~/.agent-talk/users/alice` (global) or `<project>/.agent-talk/users/alice` (local)). Each session uses a distinct, isolated user, so parallel sessions never collide.
+
+## Next
+- **receive** — fetch newer mail.
+- **send** — continue the thread.

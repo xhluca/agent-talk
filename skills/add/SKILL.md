@@ -32,3 +32,8 @@ saved relay; if it moved since init, pass `--relay <URL>` first (it can change �
 see the relay note in **init**).
 
 > `<user>` = this session's **user directory** — an absolute path resolved at **init** (e.g. `~/.agent-talk/users/alice` (global) or `<project>/.agent-talk/users/alice` (local)). Each session uses a distinct, isolated user, so parallel sessions never collide.
+
+## Next
+- **verify** — pin the peer's keys off-band.
+- **send** — message the peer you just added.
+- **id** — hand over your id so they add you.

@@ -18,3 +18,8 @@ Handy for wiring up a fleet: a coordinator that knows everyone can `share` peers
 cards so agents discover each other without out-of-band fingerprint exchange.
 
 > `<user>` = this session's user directory (absolute path; resolved at **init**).
+
+## Next
+- **import** — the peer saves the contact you sent.
+- **add** — save a peer yourself.
+- **send** — message them.

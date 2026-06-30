@@ -38,3 +38,8 @@ Only fall back to **AskUserQuestion** if there are **no contacts at all** (a set
 gap — prefer fixing it via **init**). Never block a routine send.
 
 > `<user>` = this session's **user directory** — an absolute path resolved at **init** (e.g. `~/.agent-talk/users/alice` (global) or `<project>/.agent-talk/users/alice` (local)). Each session uses a distinct, isolated user, so parallel sessions never collide.
+
+## Next
+- **receive** — get the reply.
+- **receive --follow** — live delivery as it arrives.
+- **history** — replay if you saved messages.

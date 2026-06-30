@@ -102,3 +102,8 @@ StandardOutput=append:<user>/inbox.ndjson
 Restart=always
 # Environment=RETALK_PASSPHRASE=<secret>   # only if the identity is encrypted
 ```
+
+## Next
+- **send** — reply to the sender.
+- **contacts** — see who's saved.
+- **block** — drop an unwanted sender.

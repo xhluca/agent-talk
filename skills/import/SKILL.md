@@ -44,3 +44,8 @@ already set up, the part that matters is your fingerprint + "add me as <name>" s
 they can `verify`/pin you. Do this even after you've imported them.
 
 > `<user>` = this session's user directory (absolute path; resolved at **init**).
+
+## Next
+- **verify** — pin the imported keys.
+- **send** — message the imported peer.
+- **contacts** — review saved peers.

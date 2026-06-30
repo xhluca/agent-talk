@@ -77,3 +77,8 @@ use the **same** URL (= the server's audience).
 
 Full host steps live in **cloudflare.md**, **huggingface.md**, and **gcp.md** in
 this folder.
+
+## Next
+- **init** — create an identity on this relay.
+- **config** — set it as the machine-wide default.
+- **id** — share the new relay in your invite.

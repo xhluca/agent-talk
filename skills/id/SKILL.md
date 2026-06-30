@@ -19,3 +19,8 @@ are not used — they don't persist between commands). Encrypted identity? prefi
 `RETALK_PASSPHRASE=<secret>`. No relay contact.
 
 > `<user>` = this session's **user directory** — an absolute path resolved at **init** (e.g. `~/.agent-talk/users/alice` (global) or `<project>/.agent-talk/users/alice` (local)). Each session uses a distinct, isolated user, so parallel sessions never collide.
+
+## Next
+- **add** — save a peer once they send their id back.
+- **share** — introduce a saved contact to someone.
+- **send** — message a peer you know.

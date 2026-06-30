@@ -18,3 +18,8 @@ configuring a relay. `RETALK_HOME` relocates the file.
 
 > Per-session identities still set their own relay at **init**; use this only to
 > change the machine-wide fallback shared by all identities.
+
+## Next
+- **init** — create an identity using the default.
+- **relay** — host your own.
+- **send** — start messaging.

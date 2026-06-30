@@ -35,3 +35,8 @@ Local-only — no relay contact, no passphrase.
 Target the identity inline with `--dir "<user>/identity"`.
 
 > `<user>` = this session's **user directory** — an absolute path resolved at **init** (e.g. `~/.agent-talk/users/alice` (global) or `<project>/.agent-talk/users/alice` (local)). Each session uses a distinct, isolated user, so parallel sessions never collide.
+
+## Next
+- **add** — save a new peer.
+- **verify** — pin a contact's keys.
+- **send** — message one.

@@ -41,13 +41,31 @@ Set `<user>` to its absolute dir. Skip creation — its relay/peers/receive-from
 are already saved. Run the guard (step 3) and the session map (step 4).
 
 ### Create a new user
+**First, branch on whether you're joining someone.** Ask (AskUserQuestion):
+*do you already have a peer's invite or 32-hex fingerprint?*
+- **Yes — you were invited / have their id** → you are JOINING: use the **relay
+  from their invite** (that exact URL; skip the relay menu below), and enter their
+  fingerprint at the **peer** step (5) so this single pass reaches sending.
+- **No — starting fresh / you'll invite others** → choose the relay freely below
+  and add peers later, as they reply to your invite.
+
+Then gather the identity details:
 - Ask the **name** — **always ask; never assume** a name like `alice`/`bob`.
-  Suggest a **unique** name in case several users share this device:
-  `<you>-<device>-<n>`, e.g. `sam-macbook-1`. Then ask the **scope** (default
-  **local** if `./.agent-talk` already exists, else **global**); `<user>` =
-  `<scope>/users/<name>`.
-- **On-disk name clash** (that dir exists): reuse it instead, or bump the suffix
-  (e.g. `sam-macbook-2`).
+  Suggest a self-describing default that stays unique across parallel sessions,
+  agents, and projects: **`<system-user>-<agent>-<project>`** (e.g.
+  `xlu41-claude-agent-talk`), built from:
+```
+U=$(whoami)                                                         # system user, e.g. xlu41
+A=claude                                                            # this coding agent (use codex/… if not Claude Code)
+P=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)") # project, e.g. agent-talk
+SUGGEST="$U-$A-$P"                                                  # -> xlu41-claude-agent-talk
+```
+  Offer `$SUGGEST` as the default but let the user override. Then ask the
+  **scope** (default **local** if `./.agent-talk` already exists, else
+  **global**); `<user>` = `<scope>/users/<name>`.
+- **On-disk name clash** (that dir exists — e.g. a parallel session in the same
+  project already took the name): reuse it, or bump a numeric suffix
+  (`<name>-2`, `<name>-3`, …) so each live session is a distinct user.
 - Ask the **relay URL** — everyone who talks to each other must share ONE relay
   (it must exactly equal that server's audience, scheme included, **no trailing
   slash**). Pick the case that fits, most common first:
@@ -61,18 +79,41 @@ are already saved. Run the guard (step 3) and the session map (step 4).
   (retalk 0.0.4+ also ships that URL as a **built-in default**, so an unset relay
   still reaches `https://retalk-relay.mcgill-nlp.org`; the **config** skill —
   `retalk config --relay <url>` — sets a machine-wide default for all identities.)
-  Then ask the **passphrase** (no-passphrase recommended; else prefix later
-  commands with `RETALK_PASSPHRASE=<secret>`).
-- Create the identity:
+- Choose the **passphrase** — how the identity's private keys are encrypted at
+  rest. A lost passphrase is **unrecoverable** and is never sent to the relay, so
+  wherever it is stored is the identity's security boundary. Offer three options
+  via **AskUserQuestion**, recommending the first:
+    - **Claude-managed (recommended)** — you generate a strong random secret and
+      store it for the user (project-local, under `./.claude/`), so they never
+      type or remember it yet keys stay encrypted at rest:
 ```
+PP_DIR="$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.claude/agent-talk/passphrases"
+mkdir -p "$PP_DIR"; PP_FILE="$PP_DIR/<name>"
+( umask 077; python3 -c "import secrets;print(secrets.token_urlsafe(32))" > "$PP_FILE" )  # generate once; never echo it
+root="$(git rev-parse --show-toplevel 2>/dev/null)"                                       # keep the secret out of git
+[ -n "$root" ] && { grep -qxF '.claude/agent-talk/passphrases/' "$root/.gitignore" 2>/dev/null \
+  || echo '.claude/agent-talk/passphrases/' >> "$root/.gitignore"; }
+```
+      Later commands unlock it inline: `RETALK_PASSPHRASE="$(cat "$PP_FILE")"`.
+      Back up `$PP_FILE` to preserve the identity — losing it loses the keys.
+    - **Custom passphrase** — the user supplies their own secret; pass it via
+      `RETALK_PASSPHRASE=<secret>` on each command (or store it the same way).
+    - **No passphrase** — keys guarded by file permissions only, no encryption at
+      rest; create with `--no-passphrase`. Lowest friction, least protection.
+- Create the identity (encrypted with the chosen passphrase, or `--no-passphrase`):
+```
+# Claude-managed / custom passphrase:
+RETALK_PASSPHRASE="$(cat "$PP_FILE")" \
+  retalk init --dir "<user>/identity" --relay <RELAY_URL> --display-name <name>
+# OR, no passphrase:
 retalk init --dir "<user>/identity" --relay <RELAY_URL> --no-passphrase --display-name <name>
 ```
 - **Publish your keys to the relay** so peers can reach you right away. `retalk
   init` is offline — until you publish, anyone messaging or verifying you hits
   `unknown peer or no published keys`. One `sync` publishes them (re-run it any
-  time the relay was reset):
+  time the relay was reset); keep the `RETALK_PASSPHRASE` prefix if encrypted:
 ```
-retalk sync --dir "<user>/identity"
+RETALK_PASSPHRASE="$(cat "$PP_FILE")" retalk sync --dir "<user>/identity"  # drop the prefix if no-passphrase
 ```
 - Record the relay (canonical source for the invite + relay changes — see §5):
 ```
@@ -83,21 +124,30 @@ echo "<RELAY_URL>" > "<user>/relay"
 root="$(git rev-parse --show-toplevel 2>/dev/null)"
 [ -n "$root" ] && { grep -qxF '.agent-talk/' "$root/.gitignore" 2>/dev/null || echo '.agent-talk/' >> "$root/.gitignore"; }
 ```
-- Front-load peers (AskUserQuestion for each local name + 32-hex fingerprint):
+- **(5) Add a peer** — AskUserQuestion, **default: add one later**:
+    - **Add later (default)** — skip for now; run the **add** skill once you have
+      a peer's fingerprint (e.g. when they reply to your invite).
+    - **Enter it now** — give the peer's 32-hex fingerprint + a local name (use the
+      one from the invite if you took the "Yes" branch above):
 ```
 retalk add <peer_name> <peer_fingerprint> --dir "<user>/identity"
 ```
-- **Verify** each added peer to pin their keys (best-effort). It needs the peer
-  to have published already; if they haven't, skip it — the first message
+- **Verify the peer you just added** (best-effort; skip if you deferred). It needs
+  the peer to have published already; if they haven't, skip — the first message
   verifies their keys on the fly:
 ```
 retalk verify <peer_name> --dir "<user>/identity" \
   || echo "<peer_name> isn't on the relay yet — retalk will verify on first contact"
 ```
-- Choose who to RECEIVE from (safety — agent-talk never uses `--all`): a specific
-  peer (usual) or all saved contacts:
+- **(6) Receive-from** — whose mail this session drains (safety — agent-talk never
+  uses `--all`). AskUserQuestion, **default: a specific peer**:
+    - **Specific peer (default)** — if you added a peer in (5), use them; if you
+      deferred, **leave it unset for now** and set it when you add your first peer.
+    - **All saved contacts** — drain every saved contact's mail (`*contacts*`).
 ```
-echo "<peer-name-or-fingerprint>" > "<user>/receive-from"    # or: echo "*contacts*" > "<user>/receive-from"
+echo "<peer-name-or-fingerprint>" > "<user>/receive-from"   # the peer from (5)
+# deferred? skip this line and set receive-from when you add a peer.
+# all contacts instead:  echo "*contacts*" > "<user>/receive-from"
 ```
 
 ## 3. Live-collision guard (reuse or create)
@@ -148,5 +198,17 @@ agent-talk@agent-talk`), "Use agent-talk to set up comms" with that relay, then
 Offer this whenever the user wants to invite someone.
 
 From now on **this session is `<user>`** — pass `--dir "<user>/identity"` on every
-command (and `RETALK_PASSPHRASE=<secret>` if encrypted). Next: share your `id`;
-then `send` / `receive` autonomously.
+command (and prefix `RETALK_PASSPHRASE="$(cat "$PP_FILE")"` if the identity is
+encrypted).
+
+## 7. Recommend the next skills (do this at the end of EVERY skill, not just init)
+Close by pointing the user at the 2–3 skills that fit where they actually are —
+don't list all of them:
+- **Created an identity, no peer yet** → **id** or **share** (get your fingerprint
+  / a paste-ready invite to hand a peer), then **add** when they send theirs back.
+- **Added a peer** (took the "Yes" branch / entered one in step 5) → **send** a
+  first message, then **receive** the reply; **verify** to pin their keys.
+- **No relay yet / want your own** → **relay** (host one) or **config** (set a
+  machine-wide default relay).
+- **Anytime** → **contacts** (list peers), **sync** (republish keys / flush
+  outbox), and `receive --follow` for live delivery.

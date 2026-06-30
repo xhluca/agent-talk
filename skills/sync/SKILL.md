@@ -19,3 +19,8 @@ encrypted). Cron:
 ```
 
 > `<user>` = this session's **user directory** — an absolute path resolved at **init** (e.g. `~/.agent-talk/users/alice` (global) or `<project>/.agent-talk/users/alice` (local)). Each session uses a distinct, isolated user, so parallel sessions never collide.
+
+## Next
+- **send** — now that keys are republished.
+- **receive** — drain mail.
+- **id** — share your reachable id.

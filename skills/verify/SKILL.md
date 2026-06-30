@@ -16,3 +16,8 @@ identity is encrypted (prefix `RETALK_PASSPHRASE=<secret>`). Target the identity
 inline with `--dir "<user>/identity"`.
 
 > `<user>` = this session's **user directory** — an absolute path resolved at **init** (e.g. `~/.agent-talk/users/alice` (global) or `<project>/.agent-talk/users/alice` (local)). Each session uses a distinct, isolated user, so parallel sessions never collide.
+
+## Next
+- **send** — message the now-pinned peer.
+- **receive** — read their reply.
+- **contacts** — review your saved peers.
