@@ -44,7 +44,9 @@ only from trusted peers).
   **sealed at-rest copy** of each chat message; replay it later with the
   **history** skill (no relay contact). agent-talk's follower already writes a
   plain `<user>/inbox.ndjson` spool — `--save-messages` is the encrypted,
-  decrypt-on-demand alternative.
+  decrypt-on-demand alternative. Set `RETALK_SAVE_MESSAGE=1` to save on every
+  command without the flag; pair it with `send --save-messages` so **history**
+  holds both sides of the conversation.
 - `--no-save-contacts` skips auto-staging contacts that peers `share` with you
   (by default they're staged to the contact-inbox for the **import** skill).
 

@@ -1,20 +1,23 @@
 ---
-description: Save a peer's retalk user id under a local name so you can message them by name. Use when you have a peer's fingerprint to record. If the name or fingerprint is missing, ask with AskUserQuestion.
+description: Save a peer's retalk user id (their 32-hex fingerprint), optionally under a local name, so you can message them by name. Use when you have a peer's fingerprint to record. Add --verify to fetch and pin their keys now. If the fingerprint is missing, ask with AskUserQuestion.
 ---
 
 # add — save a peer
 
 ```
-retalk add <name> <fingerprint> --dir "<user>/identity"
+retalk add <fingerprint> --peer <name> --dir "<user>/identity"
+retalk add <fingerprint> --peer <name> --verify --dir "<user>/identity"   # also fetch + pin their keys now
 ```
 
-`<name>` is a local label (yours alone; the peer never learns it); `<fingerprint>`
-is the peer's 32-hex id, obtained out-of-band. If both aren't given, use
-**AskUserQuestion**. Re-adding a name overwrites it. Local-only; no relay contact.
+`<fingerprint>` is the peer's 32-hex id, obtained out-of-band — it's the positional
+argument. `--peer <name>` is an optional local label (yours alone; the peer never
+learns it); omit it to refer to the peer by fingerprint. If the fingerprint is
+missing, use **AskUserQuestion**. Re-adding the same fingerprint updates its name.
 Target the identity inline with `--dir "<user>/identity"`.
 
-Saves an *incomplete* contact (name + fingerprint); keys are fetched/verified on
-first `send`/`receive`, or run **verify** now.
+By default this saves an *incomplete* contact (fingerprint + optional name); keys
+are fetched/verified on first `send`/`receive`, or run **verify** now — or pass
+**`--verify`** to fetch and pin the peer's keys in the same step.
 
 ## After adding: share your address back (off-band)
 A peer you `add` still needs YOUR address to reach you. Hand them a paste-ready

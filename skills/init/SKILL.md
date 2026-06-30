@@ -14,12 +14,19 @@ Each user is fully isolated (own store, contacts, inbox, followers). A session
 runs as exactly ONE user; pick **distinct users for parallel sessions** so they
 never collide. Below, `<user>` is the chosen user's **absolute directory**.
 
-## 1. Ensure retalk is installed
-`retalk --help`; if missing, install from **PyPI**: `uv tool install retalk` (or
-`pip install retalk`). Do **not** `git clone` it — the repo is private, so the
-git path needs SSH/credentials and fails over HTTPS. Only fall back to
-`uv tool install "git+ssh://git@github.com/xhluca/retalk"` if you specifically
-need unreleased code.
+## 1. Install retalk — and always upgrade to the latest
+retalk's `init`, invite, and relay behavior change often, and a stale client can
+mismatch a peer or the relay — so **always pull the latest first**, even when it
+is already installed. Install-or-upgrade in one shot from **PyPI**:
+```
+uv tool install --upgrade retalk     # installs if missing, upgrades to latest if present
+# no uv? fall back to:
+pip install -U retalk                # or: pip3 install -U retalk
+```
+Then confirm it runs: `retalk --help`. Do **not** `git clone` it — the repo is
+private, so the git path needs SSH/credentials and fails over HTTPS. Only fall
+back to `uv tool install --upgrade "git+ssh://git@github.com/xhluca/retalk"` if
+you specifically need unreleased code.
 
 ## 2. List existing users (both scopes) and choose — AskUserQuestion
 ```

@@ -7,7 +7,11 @@ description: Send an end-to-end-encrypted message to a peer, autonomously. Use w
 ```
 retalk send --peer <name-or-fingerprint> "your message" --dir "<user>/identity"
 # -> {"id","to"} on stdout
+retalk send --peer <name-or-fingerprint> "msg" --save-messages --dir "<user>/identity"  # also keep your side for history
 ```
+
+Add `--save-messages` (or set `RETALK_SAVE_MESSAGE=1` for every command) to keep a
+sealed copy of what you send, so **history** shows both sides of the conversation.
 
 **Always show what you send (default).** Surface the exact outgoing message and
 recipient verbatim — e.g. print `→ bob: <the exact text>` — so the human can see
