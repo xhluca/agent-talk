@@ -206,7 +206,9 @@ Offer this whenever the user wants to invite someone.
 
 From now on **this session is `<user>`** — pass `--dir "<user>/identity"` on every
 command (and prefix `RETALK_PASSPHRASE="$(cat "$PP_FILE")"` if the identity is
-encrypted).
+encrypted). And whenever you `send` or `receive`, **display the conversation as a
+beautiful chat transcript** (both sides — see those skills) so the human can always
+track what is being discussed.
 
 ## 7. Recommend the next skills (do this at the end of EVERY skill, not just init)
 Close by pointing the user at the 2–3 skills that fit where they actually are —

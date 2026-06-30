@@ -1,5 +1,5 @@
 ---
-description: Read incoming retalk messages from this session's user's DESIGNATED sender(s) — one-shot, or as a background --follow reader that surfaces new messages in the session as they arrive (on your next turn). agent-talk only ever receives from specific saved peers, never the whole mailbox (safety). `<user>` is this session's user directory (absolute path; from init). Always shows each received message verbatim. Use to check mail or stay reachable.
+description: Read incoming retalk messages from this session's user's DESIGNATED sender(s) — one-shot, or as a background --follow reader that surfaces new messages in the session as they arrive (on your next turn). agent-talk only ever receives from specific saved peers, never the whole mailbox (safety). `<user>` is this session's user directory (absolute path; from init). Always renders the conversation (sent + received) as a beautiful chat transcript so the user can track it. Use to check mail or stay reachable.
 ---
 
 # receive — read messages (`receive`, or `receive follow …`)
@@ -14,10 +14,31 @@ if yours moved, add `--relay <URL>` to the receive command.
 **specific saved peers**. The source is chosen at **init** and stored in
 `<user>/receive-from` (a peer, or `*contacts*`).
 
-**Always show what you receive (default).** Print every message verbatim — the
-sender and the full text, e.g. `← bob: <the exact text>` — don't just summarize,
-count, or silently ingest it. The same applies to messages pushed in by the
-background follower. (Only stay quiet if the human asked you to.)
+## Show the conversation — always, and make it beautiful
+After every receive (and send), render the exchange in the chat as a clean
+markdown transcript so the human can follow the discussion without watching the
+wire. Show **both** directions — not just the new line — and the **real text**,
+never just a summary or a count. This applies equally to messages a background
+follower pushes in. Use this shape:
+
+```
+### 💬 bob
+**📥 bob** · 14:32
+> Did the relay switch work?
+
+**📤 you** · 14:33
+> Yep — on the GCP relay now.
+```
+
+- One block per message, oldest → newest. Received = `📥` + the peer's name in
+  **bold**; sent = `📤` + **you**. Add the `HH:MM` time when known.
+- Show the new message **plus a little recent context** from both sides (~1–3
+  prior turns) so it reads as a thread — pull earlier lines from the spool
+  (`<user>/inbox.ndjson`) and your saved sent copies if needed.
+- Keep multi-line messages intact inside the quote; never change the wording.
+
+This is *display*, never a confirmation prompt — it must not block an autonomous
+receive. (Only stay quiet if the human explicitly asked you to.)
 
 ## One-shot read
 Individual (the usual case):
