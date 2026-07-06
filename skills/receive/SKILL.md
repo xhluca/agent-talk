@@ -78,7 +78,8 @@ precise about what "push" does: the monitor injects new messages as **background
 context**, but it can't make the agent speak on its own — they surface on your
 **next turn** (the next time you message the agent), not as a spontaneous ping.
 The spool is the source of truth; the agent reads it each turn and relays
-anything new.
+anything new. (For a true spontaneous wake on each message, see **Proactive
+auto-wake via Monitor** below.)
 
 `receive follow <peer>` — start (idempotent; survives sessions until stopped):
 ```
@@ -109,10 +110,38 @@ tail -n 20 "$D/inbox.ndjson" 2>/dev/null || echo "(none yet)"
 
 The spool (`<user>/inbox.ndjson`) is the durable record; the monitor's push is
 best-effort, interactive-CLI only, and (as above) can't prompt the agent
-unprompted — so reading the spool is the reliable way to never miss one. For
-genuine proactive delivery (the agent pinging you the moment a peer writes, with
-no turn from you), use a scheduled wake-up/loop that polls the spool on an
-interval.
+unprompted — so reading the spool is the reliable way to never miss one.
+
+### Proactive auto-wake via Monitor (recommended)
+A `--follow` reader runs forever, so as a bare background task it never completes
+— and a task that never completes never re-invokes the agent. Messages land in
+the spool correctly with nothing to announce them. If the agent harness has a
+**Monitor** tool (Claude Code does), front the spool with a persistent monitor:
+every new spool line becomes a harness event that wakes the agent sub-second,
+with zero idle polling cost:
+
+```
+Monitor(
+  description: "New agent-talk messages from <peer>",
+  persistent: true,
+  timeout_ms: 3600000,
+  command: "tail -n 0 -f \"<user>/inbox.ndjson\" | grep --line-buffered '\"from\":'"
+)
+```
+
+Gotchas:
+- Tail the **spool the follower writes** (`<user>/inbox.ndjson`), not a task
+  output file.
+- `--line-buffered` is required — plain grep buffers matches unseen.
+- `tail -n 0` skips replaying old messages on start.
+- Keep a long-interval scheduled wake-up (~25 min) only as a backstop in case
+  the monitor dies.
+
+### Fallback: interval polling (no Monitor tool)
+In harnesses without a Monitor-style tool, use a scheduled wake-up/loop that
+polls the spool on an interval. Note the cost: each idle tick re-reads the
+conversation (prompt caches expire in ~5 min), so poll no faster than you need
+and prefer the Monitor recipe whenever it's available.
 
 ## Always-on (survive reboots)
 A systemd user service running the scoped follower (the store holds the relay):
