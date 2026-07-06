@@ -41,6 +41,18 @@ Set `<user>` to its absolute dir. Skip creation — its relay/peers/receive-from
 are already saved. Run the guard (step 3) and the session map (step 4).
 
 ### Create a new user
+**Ask ALL of these — never silently default the name or scope.** There are five
+pre-creation questions and AskUserQuestion allows at most **4 per screen**, so ask
+them in **two screens** (do not drop any to fit):
+- **Screen 1:** joining-or-fresh · **name** · **scope**
+- **Screen 2:** relay · passphrase
+
+(If you took the **Yes/joining** branch, the relay is fixed by the invite — drop it
+from screen 2, which then also has room to fold in the passphrase's storage
+sub-question.) The **name** and **scope** questions are mandatory every time; a run
+that only asks joining/relay/passphrase has skipped them and is wrong. Then steps
+(5) add-peer and (6) receive-from are asked **after** the identity is created.
+
 **First, branch on whether you're joining someone.** Ask (AskUserQuestion):
 *do you already have a peer's invite or 32-hex fingerprint?*
 - **Yes — you were invited / have their id** → you are JOINING: use the **relay
