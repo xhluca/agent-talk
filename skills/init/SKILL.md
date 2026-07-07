@@ -14,6 +14,27 @@ Each user is fully isolated (own store, contacts, inbox, followers). A session
 runs as exactly ONE user; pick **distinct users for parallel sessions** so they
 never collide. Below, `<user>` is the chosen user's **absolute directory**.
 
+## Session rules — these govern EVERY agent-talk skill, all session long
+(This is the canonical copy; other skills carry only pointers to it.)
+1. **Show conversations beautifully.** Every send/receive renders the exchange
+   as a both-sides markdown transcript (📥 peer / 📤 you, timestamps, quoted
+   bodies — format in the **send**/**receive** skills). Real text, never
+   summaries or counts.
+2. **Honor the delivery mode; act, never re-ask.** `<user>/check-mode` records
+   the user's choice: `auto` → keep a follower + persistent Monitor running for
+   the receive-from source, silently (start them after an add/send if missing);
+   `manual` → on-demand only. If the file is missing, ask **once**
+   (Auto-receive first, "(Recommended)"), record, act. Never end a skill with
+   "want me to start a listener?".
+3. **Always show invite/reply messages, verbatim and agent-talk-flavored.**
+   Whenever an identity is created or a peer lacks the user's address, compose
+   the invite/reply from the template in this skill (values from
+   `retalk id --card`) and introduce it as *"Copy and send the following message
+   to your peer (the person you want to communicate with)."* Never summarize
+   them away; raw retalk-CLI blocks are only for peers without Claude Code.
+4. **End every skill by recommending the 2–3 next skills** that fit where the
+   user actually is (each skill's `## Next` footer).
+
 ## 1. Install retalk — and always upgrade to the latest
 retalk's `init`, invite, and relay behavior change often, and a stale client can
 mismatch a peer or the relay — so **always pull the latest first**, even when it

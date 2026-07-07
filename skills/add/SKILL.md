@@ -19,19 +19,13 @@ By default this saves an *incomplete* contact (fingerprint + optional name); key
 are fetched/verified on first `send`/`receive`, or run **verify** now — or pass
 **`--verify`** to fetch and pin the peer's keys in the same step.
 
-## After adding: honor the delivery mode — act, don't re-ask
-The user already chose how messages arrive (at **init**, recorded in
-`<user>/check-mode`). **Never end an add with "want me to start a listener?"**
-— read the file and act:
-- **`auto`** → make this peer covered, silently: if `<user>/receive-from` is
-  unset, write this peer's name to it; then, if no follower/Monitor is running
-  for the receive-from source, start them (exact blocks: the **receive** skill,
-  *Background follow* + *Proactive auto-wake via Monitor*). Just tell the user
-  it's live: "replies from <peer> will surface here automatically."
-- **`manual`** → do nothing; the user checks mail via **receive**.
-- **missing** (identity predates the delivery-mode question) → ask **once** via
-  AskUserQuestion — **Auto-receive first, labeled "(Recommended)"** — record the
-  answer (`echo auto|manual > "<user>/check-mode"`), then act on it as above.
+## After adding: honor the delivery mode (init → *Session rules*)
+Read `<user>/check-mode` and **act — never end an add asking "want me to start
+a listener?"**: `auto` → if `<user>/receive-from` is unset write this peer's
+name to it, then silently start the follower + Monitor if not already running
+(blocks: **receive** skill) and note that replies will surface automatically;
+`manual` → nothing; missing → ask once (Auto-receive "(Recommended)" first),
+record to `<user>/check-mode`, act.
 
 ## After adding: share your address back (off-band) — ALWAYS show the message
 A peer you `add` still needs YOUR address to reach you — unless they already have
