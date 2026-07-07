@@ -57,6 +57,13 @@ relay tampering, so stop and surface it.
 Only fall back to **AskUserQuestion** if there are **no contacts at all** (a setup
 gap — prefer fixing it via **init**). Never block a routine send.
 
+**After sending, honor the delivery mode — act, don't ask.** If
+`<user>/check-mode` says `auto` and no follower/Monitor is running for the
+receive-from source, start them silently (blocks: the **receive** skill) so the
+reply surfaces on its own — do NOT ask "want me to listen for the reply?". If
+the file says `manual`, leave it. If it's missing (older identity), ask once —
+Auto-receive first, "(Recommended)" — record the answer, then act on it.
+
 > `<user>` = this session's **user directory** — an absolute path resolved at **init** (e.g. `~/.agent-talk/users/alice` (global) or `<project>/.agent-talk/users/alice` (local)). Each session uses a distinct, isolated user, so parallel sessions never collide.
 
 ## Next
