@@ -14,6 +14,14 @@ if yours moved, add `--relay <URL>` to the receive command.
 **specific saved peers**. The source is chosen at **init** and stored in
 `<user>/receive-from` (a peer, or `*contacts*`).
 
+**Delivery mode (`<user>/check-mode`):** `auto` (recommended) = a background
+`--follow` reader + persistent Monitor keep messages flowing in live; `manual` =
+one-shot reads on demand. Honor the recorded mode. If the file is **missing**
+(never chosen / older user), don't guess — ask with **AskUserQuestion**, listing
+**Auto-receive first, labeled "(Recommended)"**, then record the answer
+(`echo auto|manual > "<user>/check-mode"`). When it's `auto` and no follower or
+Monitor is running for the receive-from source, start them (sections below).
+
 ## Show the conversation — always, and make it beautiful
 After every receive (and send), render the exchange in the chat as a clean
 markdown transcript so the human can follow the discussion without watching the

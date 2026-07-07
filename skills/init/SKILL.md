@@ -1,5 +1,5 @@
 ---
-description: Set up or resume THIS session's retalk user — from your existing users (global ~/.agent-talk or project-local ./.agent-talk) or a new one. Use for first-time setup, to pick which identity this session acts as, or when a command fails with "no identity". agent-talk has no default user; pick one with AskUserQuestion (distinct per parallel session). All human input (relay, passphrase, peers, receive source) is gathered here so send/receive run autonomously afterward.
+description: Set up or resume THIS session's retalk user — from your existing users (global ~/.agent-talk or project-local ./.agent-talk) or a new one. Use for first-time setup, to pick which identity this session acts as, or when a command fails with "no identity". agent-talk has no default user; pick one with AskUserQuestion (distinct per parallel session). All human input (relay, passphrase, peers, receive source, delivery mode — auto-receive recommended) is gathered here so send/receive run autonomously afterward.
 ---
 
 # init — pick or create this session's user
@@ -38,7 +38,10 @@ via **AskUserQuestion**.
 
 ### Reuse an existing user
 Set `<user>` to its absolute dir. Skip creation — its relay/peers/receive-from
-are already saved. Run the guard (step 3) and the session map (step 4).
+are already saved. Run the guard (step 3) and the session map (step 4). If
+`<user>/check-mode` is **missing** (older user), ask the delivery-mode question
+— see (7) below, Auto-receive recommended — and record it; if it says `auto`,
+make sure the follower + Monitor are actually running (**receive** skill).
 
 ### Create a new user
 **Ask ALL of these — never silently default the name or scope.** There are five
@@ -183,6 +186,22 @@ echo "<peer-name-or-fingerprint>" > "<user>/receive-from"   # the peer from (5)
 # deferred? skip this line and set receive-from when you add a peer.
 # all contacts instead:  echo "*contacts*" > "<user>/receive-from"
 ```
+- **(7) Delivery mode** — how incoming messages surface. AskUserQuestion, and
+  **recommend Auto-receive as the default** (make it the first option, labeled
+  "(Recommended)"):
+    - **Auto-receive (Recommended)** — start the background `receive --follow`
+      reader for the receive-from source and front its spool with a persistent
+      **Monitor** (exact blocks: the **receive** skill, *Background follow* +
+      *Proactive auto-wake via Monitor*). New messages then wake the agent and
+      surface live — nothing for the user to poll or ask for.
+    - **Manual** — no follower; the user asks to check mail and you run the
+      **receive** skill on demand.
+  Record the choice so every later skill honors it:
+```
+echo auto > "<user>/check-mode"      # or: echo manual > "<user>/check-mode"
+```
+  If **auto**: start the follower + Monitor **now** (needs the peer from (5)/(6);
+  if the peer was deferred, record `auto` and start them on the first **add**).
 
 ## 3. Live-collision guard (reuse or create)
 If a follower is already running for this user, another live session is using it —
