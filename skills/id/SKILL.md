@@ -16,8 +16,12 @@ it out-of-band** and ask the peer for theirs. `--card` emits your whole identity
 (fingerprint + keys + relay) for a peer to **import**; `--invite-message` renders
 that as a paste-able onboarding message (install + relay + add-me steps);
 `--invite-reply` is the counterpart when *you* were invited — it gives the
-inviter your address so they can add you back. **Always show these blocks to the
-user verbatim** — never summarize them; they exist to be copy-pasted. Always target the identity
+inviter your address so they can add you back. **Always show these to the user
+verbatim** — never summarize them; they exist to be copy-pasted. Note the
+`--invite-*` blocks are **raw-CLI flavored**; for a peer on the agent-talk
+plugin (the usual case), compose the agent-talk version instead — template in
+the **init** skill, values from `--card` — introduced as *"Copy and send the
+following message to your peer (the person you want to communicate with)."* Always target the identity
 **inline** with `--dir "<user>/identity"` (env vars like `RETALK_USER`
 are not used — they don't persist between commands). Encrypted identity? prefix
 `RETALK_PASSPHRASE=<secret>`. No relay contact.

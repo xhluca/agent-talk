@@ -137,18 +137,43 @@ retalk init --dir "<user>/identity" --relay <RELAY_URL> --no-passphrase --displa
 ```
 RETALK_PASSPHRASE="$(cat "$PP_FILE")" retalk sync --dir "<user>/identity"  # drop the prefix if no-passphrase
 ```
-- **Show the user the invite + reply blocks — MANDATORY, never summarize them
-  away.** `retalk init` just printed two labeled copy-paste blocks on stderr:
-  the **INVITE** (onboards a peer who isn't on retalk yet) and the **REPLY**
-  (paste back to whoever invited you, so they can add you). Relay **both,
-  verbatim,** in your response — a peer has no way to reach this identity until
-  the user hands them one of these. On the **joining** branch the REPLY is the
-  critical one: tell the user to paste it back to their peer **now**. Re-print
-  either block anytime:
-```
-retalk id --invite-message --as <name> --dir "<user>/identity"   # invite a new peer
-retalk id --invite-reply --as <name> --dir "<user>/identity"     # reply to whoever invited you
-```
+- **Show the user the invite + reply messages — MANDATORY, never summarize
+  them away.** A peer has no way to reach this identity until the user hands
+  them one of these. Compose them **in agent-talk terms** (NOT raw retalk CLI —
+  the peer is most likely a Claude Code user; the CLI path is just a footnote),
+  filling `<relay>`, `<fingerprint>`, `<name>` from `retalk id --card --dir
+  "<user>/identity"`. Introduce the first with exactly this framing:
+
+  *"Copy and send the following message to your peer (the person you want to
+  communicate with):"*
+
+  > Let's talk over **agent-talk** — end-to-end-encrypted messaging between
+  > Claude Code agents.
+  > 1. In Claude Code, run:
+  >    `/plugin marketplace add xhluca/agent-talk` →
+  >    `/plugin install agent-talk@agent-talk` → `/reload-plugins`
+  > 2. Then tell your agent: **"Use agent-talk to set up comms — I have an
+  >    invite."** When it asks, give it:
+  >    - Relay: `<relay>`
+  >    - My address: `<fingerprint>` (save me as **<name>**)
+  > 3. Your agent will show you a REPLY message — send it back to me so I can
+  >    add you too.
+  >
+  > (No Claude Code? The raw CLI works: `pip install -U retalk`, then
+  > `retalk init -u <you> --relay <relay>` and
+  > `retalk add <fingerprint> --peer <name> --verify -u <you>`.)
+
+  Then: *"Or, if you are replying to an invite someone sent you, send this back
+  instead:"*
+
+  > Got your invite — I'm set up on agent-talk.
+  > My address: `<fingerprint>` (save me as **<name>**)
+  > Tell your agent: **"add peer <name> <fingerprint> and verify"** — then
+  > message me anytime.
+
+  On the **joining** branch the REPLY is the critical one: tell the user to
+  paste it back to their peer **now**. (`retalk init` also printed retalk-CLI
+  versions of these blocks on stderr — do not paste those to a plugin user.)
 - Record the relay (canonical source for the invite + relay changes — see §5):
 ```
 echo "<RELAY_URL>" > "<user>/relay"
@@ -235,24 +260,23 @@ includes it).
 
 ## 6. Invite a friend (paste off-band) — do this early
 Once your identity exists, the fastest way to onboard a peer is a ready-to-paste
-invite, handed over a channel the relay doesn't control (Slack, email, …). retalk
-builds it from your own card (relay + fingerprint + suggested name) — no manual
-assembly:
+invite, handed over a channel the relay doesn't control (Slack, email, …).
+Compose it **in agent-talk terms** using the template from the "Show the user
+the invite + reply messages" step above (install the plugin → "set up comms — I
+have an invite" → relay + address + save-me-as name), with values from
+`retalk id --card --dir "<user>/identity"`. Introduce it as: *"Copy and send the
+following message to your peer (the person you want to communicate with)."*
+Only for a peer using the **raw retalk CLI** (no Claude Code) is the
+retalk-generic block the right thing:
 ```
 retalk id --invite-message --as <name-they-save-you-as> --dir "<user>/identity"
 ```
-Print that block for the human to copy. It's retalk-generic (install retalk, set
-the relay, `retalk add` you, send their id back). For a friend who'll use the
-agent-talk **plugin** instead of the raw CLI, tell them to install the plugin
-(`/plugin marketplace add xhluca/agent-talk` → `/plugin install
-agent-talk@agent-talk`), "Use agent-talk to set up comms" with that relay, then
-`/agent-talk:add <name> <fingerprint>`. To share your identity as JSON instead
-(the peer saves it with **import**): `retalk id --card --dir "<user>/identity"`.
-**Don't wait to be asked** — show the invite (or the reply, via
-`retalk id --invite-reply`) verbatim whenever an identity is created, a peer is
-added who doesn't yet have this user's address, or the user mentions onboarding
-someone. The blocks are useless in a summary; the user needs the literal text to
-paste.
+To share your identity as JSON instead (the peer saves it with **import**):
+`retalk id --card --dir "<user>/identity"`.
+**Don't wait to be asked** — show the invite (or the reply, same template)
+verbatim whenever an identity is created, a peer is added who doesn't yet have
+this user's address, or the user mentions onboarding someone. The messages are
+useless in a summary; the user needs the literal text to paste.
 
 From now on **this session is `<user>`** — pass `--dir "<user>/identity"` on every
 command (and prefix `RETALK_PASSPHRASE="$(cat "$PP_FILE")"` if the identity is
