@@ -19,11 +19,14 @@ By default this saves an *incomplete* contact (fingerprint + optional name); key
 are fetched/verified on first `send`/`receive`, or run **verify** now — or pass
 **`--verify`** to fetch and pin the peer's keys in the same step.
 
-## After adding: share your address back (off-band)
-A peer you `add` still needs YOUR address to reach you. Hand them a paste-ready
-invite — retalk builds it from your own card (relay + fingerprint + suggested name):
+## After adding: share your address back (off-band) — ALWAYS show the block
+A peer you `add` still needs YOUR address to reach you — unless they already have
+it (e.g. this add came from *their* invite and you already handed back a reply).
+**Print the block for the user verbatim, unprompted** — never just mention that an
+invite exists; the user needs the literal text to paste to the peer:
 ```
-retalk id --invite-message --as <your-name> --dir "<user>/identity"
+retalk id --invite-message --as <your-name> --dir "<user>/identity"   # peer not on retalk yet
+retalk id --invite-reply --as <your-name> --dir "<user>/identity"     # replying to a peer's invite
 ```
 Or share your identity as JSON for them to **import**:
 `retalk id --card --dir "<user>/identity"`. The same invite also walks a peer who

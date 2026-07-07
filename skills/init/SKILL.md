@@ -134,6 +134,18 @@ retalk init --dir "<user>/identity" --relay <RELAY_URL> --no-passphrase --displa
 ```
 RETALK_PASSPHRASE="$(cat "$PP_FILE")" retalk sync --dir "<user>/identity"  # drop the prefix if no-passphrase
 ```
+- **Show the user the invite + reply blocks — MANDATORY, never summarize them
+  away.** `retalk init` just printed two labeled copy-paste blocks on stderr:
+  the **INVITE** (onboards a peer who isn't on retalk yet) and the **REPLY**
+  (paste back to whoever invited you, so they can add you). Relay **both,
+  verbatim,** in your response — a peer has no way to reach this identity until
+  the user hands them one of these. On the **joining** branch the REPLY is the
+  critical one: tell the user to paste it back to their peer **now**. Re-print
+  either block anytime:
+```
+retalk id --invite-message --as <name> --dir "<user>/identity"   # invite a new peer
+retalk id --invite-reply --as <name> --dir "<user>/identity"     # reply to whoever invited you
+```
 - Record the relay (canonical source for the invite + relay changes — see §5):
 ```
 echo "<RELAY_URL>" > "<user>/relay"
@@ -147,9 +159,12 @@ root="$(git rev-parse --show-toplevel 2>/dev/null)"
     - **Add later (default)** — skip for now; run the **add** skill once you have
       a peer's fingerprint (e.g. when they reply to your invite).
     - **Enter it now** — give the peer's 32-hex fingerprint + a local name (use the
-      one from the invite if you took the "Yes" branch above):
+      one from the invite if you took the "Yes" branch above). retalk 0.0.8+:
+      **fingerprint first, name via `--peer`**:
 ```
-retalk add <peer_name> <peer_fingerprint> --dir "<user>/identity"
+retalk add <peer_fingerprint> --peer <peer_name> --dir "<user>/identity"
+# or add + pin their keys in one step (if they've already published):
+retalk add <peer_fingerprint> --peer <peer_name> --verify --dir "<user>/identity"
 ```
 - **Verify the peer you just added** (best-effort; skip if you deferred). It needs
   the peer to have published already; if they haven't, skip — the first message
@@ -214,7 +229,11 @@ agent-talk **plugin** instead of the raw CLI, tell them to install the plugin
 agent-talk@agent-talk`), "Use agent-talk to set up comms" with that relay, then
 `/agent-talk:add <name> <fingerprint>`. To share your identity as JSON instead
 (the peer saves it with **import**): `retalk id --card --dir "<user>/identity"`.
-Offer this whenever the user wants to invite someone.
+**Don't wait to be asked** — show the invite (or the reply, via
+`retalk id --invite-reply`) verbatim whenever an identity is created, a peer is
+added who doesn't yet have this user's address, or the user mentions onboarding
+someone. The blocks are useless in a summary; the user needs the literal text to
+paste.
 
 From now on **this session is `<user>`** — pass `--dir "<user>/identity"` on every
 command (and prefix `RETALK_PASSPHRASE="$(cat "$PP_FILE")"` if the identity is
