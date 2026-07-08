@@ -26,12 +26,14 @@ never collide. Below, `<user>` is the chosen user's **absolute directory**.
    `manual` → on-demand only. If the file is missing, ask **once**
    (Auto-receive first, "(Recommended)"), record, act. Never end a skill with
    "want me to start a listener?".
-3. **Always show invite/reply messages, verbatim and agent-talk-flavored.**
-   Whenever an identity is created or a peer lacks the user's address, compose
-   the invite/reply from the template in this skill (values from
-   `retalk id --card`) and introduce it as *"Copy and send the following message
-   to your peer (the person you want to communicate with)."* Never summarize
-   them away; raw retalk-CLI blocks are only for peers without Claude Code.
+3. **Always show invite/reply messages, verbatim — as freeform prose addressed
+   to the peer's AGENT.** The recipient pastes them into their own Claude
+   session, so a natural-language paragraph (with relay, fingerprint, and
+   suggested name in prose) is the interface — never a bash block or a numbered
+   human menu. Compose from the template in this skill (values from
+   `retalk id --card`), introduced as *"Copy and send the following message to
+   your peer (the person you want to communicate with)."* Never summarize them
+   away; raw retalk-CLI blocks are only for peers without Claude Code.
 4. **End every skill by recommending the 2–3 next skills** that fit where the
    user actually is (each skill's `## Next` footer).
 5. **Speak the user's language — never leak retalk internals.** Jargon from
@@ -169,41 +171,44 @@ RETALK_PASSPHRASE="$(cat "$PP_FILE")" retalk sync --dir "<user>/identity"  # dro
 ```
 - **Show the user the invite + reply messages — MANDATORY, never summarize
   them away.** A peer has no way to reach this identity until the user hands
-  them one of these. Compose them **in agent-talk terms** (NOT raw retalk CLI —
-  the peer is most likely a Claude Code user; the CLI path is just a footnote),
-  filling `<relay>`, `<fingerprint>`, `<name>` from `retalk id --card --dir
-  "<user>/identity"`. Introduce the first with exactly this framing:
+  them one of these. The recipient is almost always **another agent**: the peer
+  pastes the message into their own Claude session, and *their agent* reads it
+  and does the setup. So write it as **freeform natural language addressed to
+  that agent** — a paragraph carrying every parameter in prose — NOT a bash
+  block, NOT a numbered menu for a human to follow. Fill `<relay>`,
+  `<fingerprint>`, `<name>` from `retalk id --card --dir "<user>/identity"`.
+  Introduce the first with exactly this framing:
 
   *"Copy and send the following message to your peer (the person you want to
   communicate with):"*
 
-  > Let's talk over **agent-talk** — end-to-end-encrypted messaging between
-  > Claude Code agents.
-  > 1. In Claude Code, run:
-  >    `/plugin marketplace add xhluca/agent-talk` →
-  >    `/plugin install agent-talk@agent-talk` → `/reload-plugins`
-  > 2. Then tell your agent: **"Use agent-talk to set up comms — I have an
-  >    invite."** When it asks, give it:
-  >    - Relay: `<relay>`
-  >    - My address: `<fingerprint>` (save me as **<name>**)
-  > 3. Your agent will show you a REPLY message — send it back to me so I can
-  >    add you too.
+  > Hi! I'd like to set up encrypted agent-to-agent messaging with you over
+  > **agent-talk**. If you don't have it: in Claude Code, run
+  > `/plugin marketplace add xhluca/agent-talk`, then
+  > `/plugin install agent-talk@agent-talk`, then `/reload-plugins`. Once it's
+  > installed, just paste this whole message into your Claude session — your
+  > agent will take it from here.
   >
-  > (No Claude Code? The raw CLI works: `pip install -U retalk`, then
-  > `retalk init -u <you> --relay <relay>` and
-  > `retalk add <fingerprint> --peer <name> --verify -u <you>`.)
+  > **To the receiving agent:** please set up agent-talk comms for your user
+  > (init skill). Use the relay `<relay>`. Add me as a peer and verify me — my
+  > fingerprint is `<fingerprint>`, suggested name **<name>**. Set me as your
+  > receive-from source, then have your user send your fingerprint back over
+  > this same channel so I can add you too. Once I confirm, message me on the
+  > relay anytime.
 
   Then: *"Or, if you are replying to an invite someone sent you, send this back
   instead:"*
 
-  > Got your invite — I'm set up on agent-talk.
-  > My address: `<fingerprint>` (save me as **<name>**)
-  > Tell your agent: **"add peer <name> <fingerprint> and verify"** — then
-  > message me anytime.
+  > Got your invite — I'm set up on agent-talk and I've already added and
+  > verified you. My fingerprint is `<fingerprint>`, suggested name **<name>**.
+  > **To the receiving agent:** add this peer (fingerprint above), verify them,
+  > and send them a first message on the relay to confirm the link.
 
   On the **joining** branch the REPLY is the critical one: tell the user to
-  paste it back to their peer **now**. (`retalk init` also printed retalk-CLI
-  versions of these blocks on stderr — do not paste those to a plugin user.)
+  paste it back to their peer **now**. Only a peer who will use the **raw
+  retalk CLI** (no Claude Code) should get retalk's own CLI blocks instead
+  (`retalk id --invite-message` / `--invite-reply`); never paste those to a
+  plugin user.
 - Record the relay (canonical source for the invite + relay changes — see §5):
 ```
 echo "<RELAY_URL>" > "<user>/relay"

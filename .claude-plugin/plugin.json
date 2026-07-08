@@ -1,6 +1,6 @@
 {
   "name": "agent-talk",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "description": "Skills for setting up end-to-end-encrypted agent-to-agent comms with the retalk CLI.",
   "author": {
     "name": "Xing Han Lu"
