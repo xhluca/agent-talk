@@ -34,6 +34,15 @@ never collide. Below, `<user>` is the chosen user's **absolute directory**.
    them away; raw retalk-CLI blocks are only for peers without Claude Code.
 4. **End every skill by recommending the 2–3 next skills** that fit where the
    user actually is (each skill's `## Next` footer).
+5. **Speak the user's language — never leak retalk internals.** Jargon from
+   these skills and retalk's own output (ratchet, Olm, session, pre-key,
+   one-time key, MAC, spool, follower, ack/nack, outbox, audience) is for YOU,
+   not the user. Translate: follower/Monitor → "background listener";
+   spool/inbox.ndjson → "message log"; outbox/ack → "queued / delivery
+   confirmed"; ratchet/MAC/session errors → "an encryption hiccup I'm
+   resolving". The **fingerprint** stays user-facing (it's their address and
+   verification pin). Go technical only if the user asks, or when they must
+   act on it — then define the term in one clause.
 
 ## 1. Install retalk — and always upgrade to the latest
 retalk's `init`, invite, and relay behavior change often, and a stale client can

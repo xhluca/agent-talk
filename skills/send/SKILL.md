@@ -54,6 +54,10 @@ Publishes keys + resends the outbox first; the peer reads it with **receive**.
 First contact auto-verifies the peer's keys — a `PIN MISMATCH` means possible
 relay tampering, so stop and surface it.
 
+**Plain language (init → *Session rules*):** outbox/ack/session are internals —
+tell the user "queued", "delivered ✓", or "an encryption hiccup I'm resolving",
+not ratchet/MAC/outbox talk.
+
 Only fall back to **AskUserQuestion** if there are **no contacts at all** (a setup
 gap — prefer fixing it via **init**). Never block a routine send.
 

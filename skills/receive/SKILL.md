@@ -14,6 +14,11 @@ if yours moved, add `--relay <URL>` to the receive command.
 **specific saved peers**. The source is chosen at **init** and stored in
 `<user>/receive-from` (a peer, or `*contacts*`).
 
+**Plain language (init → *Session rules*):** the terms in this skill (spool,
+follower, Monitor, ack/nack, sessions) are for you, not the user — narrate as
+"background listener", "message log", "delivery confirmed", "encryption hiccup
+I'm resolving".
+
 **Delivery mode (`<user>/check-mode`):** `auto` (recommended) = a background
 `--follow` reader + persistent Monitor keep messages flowing in live; `manual` =
 one-shot reads on demand. Honor the recorded mode. If the file is **missing**
