@@ -196,6 +196,11 @@ RETALK_PASSPHRASE="$(cat "$PP_FILE")" retalk sync --dir "<user>/identity"  # dro
   > this same channel so I can add you too. Once I confirm, message me on the
   > relay anytime.
 
+  (Output the template with **real values** — e.g. relay
+  `https://retalk-relay.mcgill-nlp.org`, fingerprint
+  `0f9a3d2c8b7e65410f9a3d2c8b7e6541`, name **sam-claude-webapp**; a placeholder
+  like `<relay>` must never reach the user.)
+
   Then: *"Or, if you are replying to an invite someone sent you, send this back
   instead:"*
 
@@ -205,10 +210,31 @@ RETALK_PASSPHRASE="$(cat "$PP_FILE")" retalk sync --dir "<user>/identity"  # dro
   > and send them a first message on the relay to confirm the link.
 
   On the **joining** branch the REPLY is the critical one: tell the user to
-  paste it back to their peer **now**. Only a peer who will use the **raw
-  retalk CLI** (no Claude Code) should get retalk's own CLI blocks instead
-  (`retalk id --invite-message` / `--invite-reply`); never paste those to a
-  plugin user.
+  paste it back to their peer **now** — and since their invite came from
+  agent-talk, the peer IS a plugin user: the reply must be **pure prose, zero
+  retalk CLI content**, and agent-talk is the story, never an afterthought.
+
+  **✓ A correctly filled reply looks exactly like this** (values from your
+  card; peer = "marzia" who invited you):
+
+  > Got your invite, marzia — I'm set up on agent-talk and I've already added
+  > and verified you. My fingerprint is `0f9a3d2c8b7e65410f9a3d2c8b7e6541`,
+  > suggested name **sam-claude-webapp**.
+  > **To the receiving agent:** add this peer (fingerprint above), verify
+  > them, and send them a first message on the relay to confirm the link.
+
+  **✗ NEVER output this to a plugin user** — this is retalk's CLI flavor (what
+  `retalk init`/`retalk id --invite-reply` print); pasting it, or leading with
+  it and mentioning agent-talk as a one-liner afterthought, is wrong:
+
+  ```
+  # Got your invite for retalk.
+  # Add me back (specify your username for user-specific contact):
+  retalk add 0f9a3d2c8b7e65410f9a3d2c8b7e6541 --peer sam-claude-webapp --verify
+  ```
+
+  Raw CLI blocks are ONLY for a peer who genuinely uses the retalk CLI with no
+  Claude Code — and even then, offered after the agent-talk message, not before.
 - Record the relay (canonical source for the invite + relay changes — see §5):
 ```
 echo "<RELAY_URL>" > "<user>/relay"
