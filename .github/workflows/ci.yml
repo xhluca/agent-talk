@@ -1,0 +1,96 @@
+name: CI
+
+# Deterministic, LLM-free CI. No model calls, no auth, no secrets.
+#   * validate      — static plugin/skill checks + the repo's LLM-free unit tests.
+#   * install-smoke — proves the plugin *installs* on codex and claude with no
+#                     authentication and no model calls (verified in a fresh,
+#                     credential-free container before this job was written).
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: validate (deterministic, no LLM)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate plugin artifacts (manifests, skills, marketplace)
+        run: python3 tests/validate_plugin.py
+
+      - name: Run LLM-free unit tests
+        # The E2E round-trip test self-skips unless AGENT_TALK_E2E=1 and retalk is
+        # on PATH, so `discover` stays network-free / auth-free here.
+        run: python3 -m unittest discover -s tests -v
+
+  install-smoke:
+    name: install-smoke (codex + claude, no auth)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install agent CLIs
+        run: npm i -g @anthropic-ai/claude-code @openai/codex
+
+      # ---- codex ------------------------------------------------------------
+      # Verified auth-free in a fresh container: `codex plugin marketplace add` +
+      # `codex plugin add` land the plugin under
+      # ~/.codex/plugins/cache/agent-talk/agent-talk/<version>/ with no login.
+      - name: codex — add marketplace and install plugin
+        run: |
+          codex plugin marketplace add "$PWD"
+          codex plugin add agent-talk@agent-talk
+
+      - name: codex — assert all 14 skills landed in the cache
+        run: |
+          set -euo pipefail
+          root="$HOME/.codex/plugins/cache/agent-talk/agent-talk"
+          dir="$(find "$root" -mindepth 2 -maxdepth 2 -type d -name skills | head -n1)"
+          if [ -z "$dir" ]; then
+            echo "codex: no skills dir under $root" >&2
+            find "$root" -maxdepth 3 -type d >&2 || true
+            exit 1
+          fi
+          count="$(find "$dir" -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l)"
+          echo "codex skills dir: $dir  (SKILL.md count: $count)"
+          test "$count" -eq 14
+
+      # ---- claude -----------------------------------------------------------
+      # Verified auth-free in a fresh container: `claude plugin marketplace add` +
+      # `claude plugin install` land the plugin under
+      # ~/.claude/plugins/cache/agent-talk/agent-talk/<version>/ with no login.
+      - name: claude — add marketplace and install plugin
+        run: |
+          claude plugin marketplace add "$PWD"
+          claude plugin install agent-talk@agent-talk
+
+      - name: claude — assert all 14 skills landed in the cache
+        run: |
+          set -euo pipefail
+          root="$HOME/.claude/plugins/cache/agent-talk/agent-talk"
+          dir="$(find "$root" -mindepth 2 -maxdepth 2 -type d -name skills | head -n1)"
+          if [ -z "$dir" ]; then
+            echo "claude: no skills dir under $root" >&2
+            find "$root" -maxdepth 3 -type d >&2 || true
+            exit 1
+          fi
+          count="$(find "$dir" -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l)"
+          echo "claude skills dir: $dir  (SKILL.md count: $count)"
+          test "$count" -eq 14
