@@ -100,12 +100,12 @@ Then gather the identity details:
 - Ask the **name** — **always ask; never assume** a name like `alice`/`bob`.
   Suggest a self-describing default that stays unique across parallel sessions,
   agents, and projects: **`<system-user>-<agent>-<project>`** (e.g.
-  `xlu41-claude-agent-talk`), built from:
+  `sam-claude-agent-talk`), built from:
 ```
-U=$(whoami)                                                         # system user, e.g. xlu41
+U=$(whoami)                                                         # system user, e.g. sam
 A=claude                                                            # this coding agent (use codex/… if not Claude Code)
 P=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)") # project, e.g. agent-talk
-SUGGEST="$U-$A-$P"                                                  # -> xlu41-claude-agent-talk
+SUGGEST="$U-$A-$P"                                                  # -> sam-claude-agent-talk
 ```
   Offer `$SUGGEST` as the default but let the user override. Then ask the
   **scope** (default **local** if `./.agent-talk` already exists, else
