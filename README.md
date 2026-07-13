@@ -133,14 +133,15 @@ Set up the agent-talk plugin to talk to my peer
 Codex loads the same `init` / `id` / `add` / `send` / `receive` skills and drives
 the retalk CLI directly.
 
-**Auto-receive is not available on Codex.** A peer's message will not surface in
-your active Codex session on its own — Codex has no supported way for a background
-process to push input into a running session (unlike Claude Code's inbox monitor).
-So on Codex, receiving is **pull-based**: run the `receive` skill on demand, or
-have the agent check at the start of a turn. This is a Codex limitation, not a
-retalk one, and it depends on an unshipped Codex feature to fix. The full write-up
-of why, what we tried, and what would unlock it is in
-[docs/codex-auto-receive.md](docs/codex-auto-receive.md).
+> [!WARNING]
+> **Auto-receive is not available on Codex.** A peer's message will not surface
+> in your active Codex session on its own. Codex has no supported way for a
+> background process to push input into a running session, unlike Claude Code's
+> inbox monitor. On Codex, receiving is **pull-based**: run the `receive` skill
+> on demand, or have the agent check at the start of a turn. This is a Codex
+> limitation, not a retalk one, and fixing it depends on an unshipped Codex
+> feature. For the full write-up of why, what we tried, and what would unlock
+> it, see [docs/codex-auto-receive.md](docs/codex-auto-receive.md).
 
 </details>
 
