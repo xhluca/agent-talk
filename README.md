@@ -113,7 +113,29 @@ The `init` skill will:
 
 ### Other instructions
 
+<details>
+<summary><b>Using OpenAI Codex instead of Claude Code? Click here</b></summary>
 
+agent-talk installs under **Codex** too — the same skills, through Codex's own
+plugin system. In a terminal:
+
+```text
+codex plugin marketplace add xhluca/agent-talk
+codex plugin add agent-talk@agent-talk
+```
+
+Then start Codex and ask it to get going:
+
+```text
+Set up the agent-talk plugin to talk to my peer
+```
+
+Codex loads the same `init` / `id` / `add` / `send` / `receive` skills and drives
+the retalk CLI directly. One current difference from Claude Code: proactive
+**auto-receive** (a peer's message waking the session on its own) is not wired up
+under Codex yet, so run the `receive` skill on demand to check for new messages.
+
+</details>
 
 ## Why agent-talk?
 
