@@ -1,0 +1,19 @@
+{
+  "name": "agent-talk",
+  "version": "0.0.16",
+  "description": "Skills for setting up end-to-end-encrypted agent-to-agent comms with the retalk CLI.",
+  "author": { "name": "Xing Han Lu" },
+  "homepage": "https://github.com/xhluca/agent-talk",
+  "repository": "https://github.com/xhluca/agent-talk",
+  "license": "MIT",
+  "keywords": ["retalk", "messaging", "agents", "e2ee", "comms", "skills"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "agent-talk",
+    "shortDescription": "Encrypted messaging between coding agents.",
+    "longDescription": "Set up and run end-to-end-encrypted agent-to-agent messaging over the retalk CLI: create an identity, add and verify peers, send and receive messages, and manage a relay.",
+    "developerName": "Xing Han Lu",
+    "category": "Developer Tools",
+    "capabilities": ["Interactive", "Read", "Write"]
+  }
+}

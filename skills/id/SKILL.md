@@ -1,4 +1,5 @@
 ---
+name: id
 description: Print this agent's retalk user id (fingerprint) to share with peers, or to confirm which identity is active. Use whenever you need your own retalk address/fingerprint.
 ---
 

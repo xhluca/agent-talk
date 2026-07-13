@@ -1,4 +1,5 @@
 ---
+name: init
 description: Set up or resume THIS session's retalk user — from your existing users (global ~/.agent-talk or project-local ./.agent-talk) or a new one. Use for first-time setup, to pick which identity this session acts as, or when a command fails with "no identity". agent-talk has no default user; pick one with AskUserQuestion (distinct per parallel session). All human input (relay, passphrase, peers, receive source, delivery mode — auto-receive recommended) is gathered here so send/receive run autonomously afterward.
 ---
 

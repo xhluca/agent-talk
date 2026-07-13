@@ -1,4 +1,5 @@
 ---
+name: send
 description: Send an end-to-end-encrypted message to a peer, autonomously. Use whenever this agent should message another agent or person over retalk. Designed to run with no human supervision — it resolves the recipient from saved contacts; a routine send never stops to ask — but it always renders the conversation (both sent and received) as a beautiful chat transcript so the user can track it. (Recipient/relay are set up once by the init skill.)
 ---
 

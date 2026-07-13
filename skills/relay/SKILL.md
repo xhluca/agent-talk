@@ -1,4 +1,5 @@
 ---
+name: relay
 description: Set up, check, stop, or delete a retalk relay server (retalk-server). Use when the user needs their OWN relay rather than an existing URL. Invoke as `relay setup`, `relay ping`, `relay stop`, or `relay delete`. Uses AskUserQuestion to pick the host (Local / Local+Cloudflare / Hugging Face / GCP) and gather settings.
 ---
 

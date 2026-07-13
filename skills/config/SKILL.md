@@ -1,4 +1,5 @@
 ---
+name: config
 description: Show or set owner-wide retalk defaults in ~/.retalk/config.json (machine-wide, not per-session) — mainly the default relay used as the last fallback. Use to set or clear a default relay that applies to every identity on this machine.
 ---
 

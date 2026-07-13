@@ -1,4 +1,5 @@
 ---
+name: history
 description: Replay this session's locally-saved conversation log — the at-rest copies kept by `send`/`receive --save-messages` — both sent and received, oldest first, without re-contacting the relay. Use to review the conversation with a peer. `<user>` is this session's user directory (absolute path; from init).
 ---
 

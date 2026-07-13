@@ -1,4 +1,5 @@
 ---
+name: contacts
 description: List saved peers (your address book) and whether each is verified, show one peer as a shareable JSON Contact card, or remove a saved peer. Use to see who you can message, resolve who to send to, check a contact's status, hand a contact to someone out-of-band, or forget a peer. `<user>` is this session's user directory (absolute path; from init).
 ---
 

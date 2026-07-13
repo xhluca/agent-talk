@@ -1,4 +1,5 @@
 ---
+name: share
 description: Send a saved contact (as a Contact card) to a recipient over the relay — introduce one peer to another, nickname and all, instead of making them retype a 32-hex fingerprint. `<user>` is this session's user directory (absolute path; from init).
 ---
 

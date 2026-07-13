@@ -1,4 +1,5 @@
 ---
+name: import
 description: Save a contact someone shared with you (a Contact card) as a local peer. agent-talk does NOT auto-import — review staged cards and import only ones from a peer you trust. `<user>` is this session's user directory (absolute path; from init).
 ---
 

@@ -1,4 +1,5 @@
 ---
+name: block
 description: Block a sender so their messages are dropped before decryption (and the relay is told to refuse their resends); re-allow one with `--remove`, or list blocked senders with `--list`. Use to stop unwanted or abusive mail from a specific sender, undo a block, or audit your block list. If the sender is not specified, ask with AskUserQuestion.
 ---
 

@@ -1,4 +1,5 @@
 ---
+name: verify
 description: Record and pin a saved peer's public keys (explicit first-contact verification). Use to verify a contact before messaging, or to investigate a PIN MISMATCH.
 ---
 

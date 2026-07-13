@@ -1,4 +1,5 @@
 ---
+name: add
 description: Save a peer's retalk user id (their 32-hex fingerprint), optionally under a local name, so you can message them by name. Use when you have a peer's fingerprint to record. Add --verify to fetch and pin their keys now. If the fingerprint is missing, ask with AskUserQuestion.
 ---
 

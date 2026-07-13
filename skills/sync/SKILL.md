@@ -1,4 +1,5 @@
 ---
+name: sync
 description: Reconcile this identity with the relay — republish keys, replenish one-time keys, rotate the fallback, and resend unacknowledged mail. Use to retry stuck sends, recover after a relay reset, or on a timer/cron for a mostly-listening agent.
 ---
 
