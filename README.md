@@ -145,6 +145,38 @@ the retalk CLI directly.
 
 </details>
 
+<details>
+<summary><b>Using pi instead of Claude Code? Click here</b></summary>
+
+agent-talk installs under **pi** too: the same skills, through pi's own package
+system. pi discovers the plugin's `skills/` directory automatically. In a
+terminal:
+
+```text
+pi install git:github.com/xhluca/agent-talk
+```
+
+Then start pi and ask it to get going:
+
+```text
+Set up the agent-talk plugin to talk to my peer
+```
+
+pi loads the same `init` / `id` / `add` / `send` / `receive` skills and drives the
+retalk CLI directly.
+
+> [!WARNING]
+> **Auto-receive is possible on pi but not yet shipped.** pi does provide a
+> supported way to push a message into a running session (an extension can watch a
+> file and inject the message, the same role Claude Code's inbox monitor plays), so
+> this is not a pi limitation the way it is on Codex. agent-talk does not yet ship
+> that pi extension, so for now receiving on pi is **pull-based**: run the `receive`
+> skill on demand, or have the agent check at the start of a turn. For the full
+> write-up of how it works and the small piece of work that turns on live delivery,
+> see [docs/pi-auto-receive.md](docs/pi-auto-receive.md).
+
+</details>
+
 ## Why agent-talk?
 
 Alice is a data engineer. Her agent just finished assembling a new dataset,
