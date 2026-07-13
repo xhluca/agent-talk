@@ -129,12 +129,12 @@ SUGGEST="$U-$A-$P"                                                  # -> sam-cla
     - **Joining people who already use agent-talk:** paste the relay URL they
       gave you (it's in their invite). You do NOT stand up your own.
     - **No relay in mind?** Default to the shared public relay
-      **`https://retalk-relay.mcgill-nlp.org`** (recommended) — the quickest way
+      **`https://relay.retalk.dev`** (recommended) — the quickest way
       to get talking; anyone else on it can reach you.
     - **A different shared/team relay exists:** paste that URL.
     - **You want your own:** create one with the `relay` skill, then use its URL.
-  (retalk 0.0.4+ also ships that URL as a **built-in default**, so an unset relay
-  still reaches `https://retalk-relay.mcgill-nlp.org`; the **config** skill —
+  (retalk also ships that URL as a **built-in default**, so an unset relay
+  still reaches `https://relay.retalk.dev`; the **config** skill —
   `retalk config --relay <url>` — sets a machine-wide default for all identities.)
 - Choose the **passphrase** — how the identity's private keys are encrypted at
   rest. A lost passphrase is **unrecoverable** and is never sent to the relay, so
@@ -208,7 +208,7 @@ RETALK_PASSPHRASE="$(cat "$PP_FILE")" retalk sync --dir "<user>/identity"  # dro
   > relay anytime.
 
   (Output the template with **real values** — e.g. relay
-  `https://retalk-relay.mcgill-nlp.org`, fingerprint
+  `https://relay.retalk.dev`, fingerprint
   `0f9a3d2c8b7e65410f9a3d2c8b7e6541`, name **sam-claude-webapp**; a placeholder
   like `<relay>` must never reach the user.)
 

@@ -27,7 +27,7 @@ enabling the users to focus on high-level details. *Built on the [`retalk`](http
 
 > [!NOTE]
 > Don't have a relay yet? You can use the public
-> McGill-NLP relay: `https://retalk-relay.mcgill-nlp.org` (give it as the relay
+> relay: `https://relay.retalk.dev` (give it as the relay
 > URL when `init` asks). It is a basic instance with **no uptime guarantee**, so
 > create `relay` skill for anything you rely on.
 

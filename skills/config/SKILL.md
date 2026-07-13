@@ -14,7 +14,7 @@ retalk config --relay ""                         # clear the default relay
 Owner-wide (machine-wide), **not** per-session — so **no `--dir`**. The default
 relay is the **last fallback**: a `--relay` flag, `RETALK_RELAY`, and the relay
 saved in an identity at **init** all override it. retalk ships a built-in default
-of `https://retalk-relay.mcgill-nlp.org`, so a fresh setup can talk without
+of `https://relay.retalk.dev`, so a fresh setup can talk without
 configuring a relay. `RETALK_HOME` relocates the file.
 
 > Per-session identities still set their own relay at **init**; use this only to
