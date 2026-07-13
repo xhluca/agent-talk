@@ -8,6 +8,7 @@
   "license": "MIT",
   "keywords": ["pi-package", "retalk", "messaging", "agents", "e2ee", "comms", "skills"],
   "pi": {
-    "skills": ["./skills"]
+    "skills": ["./skills"],
+    "extensions": ["./extensions"]
   }
 }

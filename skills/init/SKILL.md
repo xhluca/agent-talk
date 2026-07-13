@@ -52,10 +52,11 @@ never collide. Below, `<user>` is the chosen user's **absolute directory**.
    agent has no such tool, just ask the user in plain text; **`/plugin …`** → your
    agent's own install flow (codex: `codex plugin add`; pi: `pi install`); the
    inbox **monitor** and the `CLAUDE_SESSION_ID` session-map (step 4) are
-   Claude-Code-only, so on other agents skip them and run the **receive** skill on
-   demand (proactive auto-receive is not wired up on codex; on pi it is possible
-   through a file-watcher extension but is not shipped yet). The retalk commands
-   themselves are identical everywhere.
+   Claude-Code-only, so on other agents skip them; proactive auto-receive is not
+   wired up on codex, so there run the **receive** skill on demand. On **pi** it
+   is available: the plugin ships a pi inbox extension that surfaces incoming
+   messages into the live session; start it as described in step 4b instead of
+   step 4. The retalk commands themselves are identical everywhere.
 
 ## 1. Install retalk — and always upgrade to the latest
 retalk's `init`, invite, and relay behavior change often, and a stale client can
@@ -292,7 +293,9 @@ echo "<peer-name-or-fingerprint>" > "<user>/receive-from"   # the peer from (5)
       reader for the receive-from source and front its spool with a persistent
       **Monitor** (exact blocks: the **receive** skill, *Background follow* +
       *Proactive auto-wake via Monitor*). New messages then wake the agent and
-      surface live — nothing for the user to poll or ask for.
+      surface live — nothing for the user to poll or ask for. (On **pi**, the
+      follower still runs, but the push comes from the pi inbox extension — see
+      step 4b — not a Monitor.)
     - **Manual** — no follower; the user asks to check mail and you run the
       **receive** skill on demand.
   Record the choice so every later skill honors it:
@@ -314,12 +317,30 @@ done
 ## 4. Register this session's user (enables real-time push) — Claude Code only
 This wires the chosen user to Claude Code's inbox **monitor** via a session map.
 It relies on `CLAUDE_SESSION_ID` and the monitor, so it applies **only on Claude
-Code** — skip this step on other agents (e.g. codex, pi), where you check mail
-with the **receive** skill on demand.
+Code** — skip this step on other agents (e.g. codex, pi). On codex, check mail
+with the **receive** skill on demand; on pi, use step 4b instead.
 ```
 mkdir -p "$HOME/.agent-talk/by-session"
 echo "<user>" > "$HOME/.agent-talk/by-session/${CLAUDE_SESSION_ID}"
 ```
+
+## 4b. Enable auto-receive on pi (pi only)
+On a **pi** host the plugin ships an inbox extension that surfaces incoming
+messages into the live session (the pi equivalent of Claude Code's monitor).
+It watches the spool paths named in the `AGENT_TALK_PI_SPOOLS` environment
+variable (colon-separated absolute `inbox.ndjson` paths) and injects each new
+message, so it must be set **before pi starts**. You cannot change a running
+process's environment, so tell the user to relaunch pi with it set. For this
+session's user:
+```
+# add this user's spool to any already set, then start pi:
+AGENT_TALK_PI_SPOOLS="$(printf '%s%s' "${AGENT_TALK_PI_SPOOLS:+$AGENT_TALK_PI_SPOOLS:}" "<user>/inbox.ndjson")" pi
+```
+The `receive --follow` reader still writes the spool (delivery mode `auto`,
+step 7); the extension is what pushes those spool lines into the session. With
+no `AGENT_TALK_PI_SPOOLS` set the extension is inert, so nothing changes for a
+user who has not opted in. If relaunching now is not convenient, receiving stays
+pull-based (**receive** skill) until the next launch.
 
 ## 5. The relay can change after init
 The relay is saved as this user's **default** (in the retalk store and in

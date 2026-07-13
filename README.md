@@ -165,15 +165,16 @@ Set up the agent-talk plugin to talk to my peer
 pi loads the same `init` / `id` / `add` / `send` / `receive` skills and drives the
 retalk CLI directly.
 
-> [!WARNING]
-> **Auto-receive is possible on pi but not yet shipped.** pi does provide a
-> supported way to push a message into a running session (an extension can watch a
-> file and inject the message, the same role Claude Code's inbox monitor plays), so
-> this is not a pi limitation the way it is on Codex. agent-talk does not yet ship
-> that pi extension, so for now receiving on pi is **pull-based**: run the `receive`
-> skill on demand, or have the agent check at the start of a turn. For the full
-> write-up of how it works and the small piece of work that turns on live delivery,
-> see [docs/pi-auto-receive.md](docs/pi-auto-receive.md).
+> [!NOTE]
+> **Auto-receive is available on pi.** The plugin ships a pi inbox extension
+> (`extensions/inbox-monitor.ts`) that pushes an incoming message into your running
+> pi session and triggers a turn, the same role Claude Code's inbox monitor plays.
+> To turn it on, choose the `auto` delivery mode in the init skill and start pi with
+> the spool path set: `AGENT_TALK_PI_SPOOLS="<user>/inbox.ndjson" pi`. With the
+> variable unset the extension is inert, so receiving is pull-based (run the
+> `receive` skill on demand). This was verified end to end between two live pi
+> sessions. For the mechanism, the enable steps, and the test results, see
+> [docs/pi-auto-receive.md](docs/pi-auto-receive.md).
 
 </details>
 

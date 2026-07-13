@@ -185,6 +185,20 @@ def check_manifests():
                             "package.json: 'pi.skills' entry "
                             f"'{ref}' is not an existing directory"
                         )
+            # `pi.extensions` is optional; when present it must be a non-empty
+            # list of existing directories (the pi inbox-monitor lives here).
+            ext_refs = pi_block.get("extensions")
+            if ext_refs is not None:
+                if not isinstance(ext_refs, list) or not ext_refs:
+                    err("package.json: 'pi.extensions' must be a non-empty list")
+                else:
+                    for ref in ext_refs:
+                        p = os.path.normpath(os.path.join(ROOT, ref))
+                        if not os.path.isdir(p):
+                            err(
+                                "package.json: 'pi.extensions' entry "
+                                f"'{ref}' is not an existing directory"
+                            )
 
 
 def check_marketplace():

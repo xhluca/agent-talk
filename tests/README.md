@@ -28,9 +28,11 @@ the plugin on `codex`, `claude`, and `pi` and asserts all 14 skills are present:
 codex/claude install from the checked-out marketplace and the job counts the
 SKILL.md files in each agent's plugin cache; pi installs the repo with
 `pi install <path>` (it discovers the `skills/` directory) and the job enumerates
-skills via pi's RPC `get_commands`. All three installs are auth-free and make no
-model calls (verified in a fresh, credential-free container), so the job needs no
-secrets.
+skills via pi's RPC `get_commands`. The pi steps also assert the bundled
+`inbox-monitor` extension loads and attaches its watcher (it notifies on
+`session_start` when `AGENT_TALK_PI_SPOOLS` is set). All three installs are
+auth-free and make no model calls (verified in a fresh, credential-free
+container), so the job needs no secrets.
 
 Not covered here (needs an interactive Claude Code session, not CI): plugin
 *loading* / activation, monitor injection, AskUserQuestion flows,

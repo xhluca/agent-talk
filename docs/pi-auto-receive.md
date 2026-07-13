@@ -10,15 +10,16 @@ using.
 Sending and receiving messages both work on pi. The capability that Codex lacks is
 the delivery of an incoming message into a session that is already running. pi
 provides a supported mechanism for exactly this. A pi extension runs inside the
-normal interactive session and can push a user message into it while it is idle or
+normal interactive session and can push a message into it while it is idle or
 streaming. That is the same role Claude Code's inbox monitor plays. As a result,
 auto-receive on pi is achievable with pi's shipped features and does not depend on
 any unreleased change.
 
-agent-talk does not ship the pi extension yet, so today receiving on pi is
-pull-based: the agent checks for new messages when asked, or at the start of a
-turn. The section "Path to support" below describes the small piece of work that
-turns on live delivery.
+agent-talk now ships a pi inbox extension that does this. It is included with the
+plugin package and, once enabled for a session, an incoming message from a peer
+surfaces in the live pi session on its own and triggers a turn. Enabling it is
+described in "Enabling auto-receive on pi" below, and the behavior was verified
+end to end between two live pi sessions (see "Verification").
 
 ## Background: how auto-receive works on Claude Code
 
@@ -60,12 +61,13 @@ behaves.
 
 ### An inbox extension
 
-A pi extension can reproduce the Claude Code monitor. On `session_start` it watches
-the follower's spool file `<user>/inbox.ndjson`. When a new line appears, it decodes
-the message and calls `pi.sendMessage` with `triggerTurn: true`, so the message
-appears in the running session and the agent takes its next turn. The follower that
-writes the spool is the same portable component used on Claude Code. This is the
-intended path and is described under "Path to support".
+A pi extension reproduces the Claude Code monitor, and this is the mechanism
+agent-talk ships (`extensions/inbox-monitor.ts`). On `session_start` it watches the
+follower's spool file `<user>/inbox.ndjson`. When a new line appears, it parses the
+message and calls `pi.sendMessage` with `triggerTurn: true`, so the message appears
+in the running session and the agent takes its next turn. The follower that writes
+the spool is the same portable component used on Claude Code. See "Implementation"
+below.
 
 ### RPC mode
 
@@ -83,31 +85,68 @@ session, polling is only needed when no extension is loaded. Where it is used, t
 polling interval changes how quickly a message is detected, not whether it can be
 delivered.
 
-## Current behavior on pi
+## Implementation
 
-- Sending and receiving both work, through the agent-talk skills or the retalk CLI.
-- Receiving is pull-based today, because agent-talk does not yet ship the pi inbox
-  extension. The agent checks for new messages when asked, or at the start of a
-  turn if configured to do so. A message that has already arrived appears the next
-  time you interact with the session.
-- Live delivery is available in principle now, through a pi extension, and becomes
-  the default once agent-talk ships that extension.
+The extension is `extensions/inbox-monitor.ts`, shipped in the plugin's `pi`
+manifest under `extensions`, so pi loads it the same way it loads the skills in
+`skills/`. Its behavior:
 
-## Path to support
+- On `session_start` it reads the environment variable `AGENT_TALK_PI_SPOOLS`, a
+  colon-separated list of absolute `inbox.ndjson` paths, and starts a watcher for
+  each. If the variable is unset it registers nothing, so installing the plugin
+  does not change any session that has not opted in.
+- Each watcher seeks to the end of its spool at startup, so only messages that
+  arrive after the session starts are surfaced. The backlog stays available through
+  the receive and history skills.
+- On a new spool line the extension parses the retalk record
+  (`{"id","from","name","text"}`), skips contact records, and calls
+  `pi.sendMessage` with `triggerTurn: true`. If pi is idle this triggers a turn
+  immediately; if it is streaming, the message is queued and delivered after the
+  current assistant turn finishes its tool calls.
+- Duplicate delivery is prevented two ways: a per-spool byte offset, so only bytes
+  appended after the last read are consumed, and a set of already-delivered message
+  ids.
+- Watchers are closed on `session_shutdown`.
 
-pi already provides the delivery mechanism, so enabling auto-receive is work on our
-side only, and it is small:
+The follower that writes the spool
+(`retalk receive --peer <fingerprint> --follow`) is unchanged and portable. The
+extension only adds the delivery-into-the-session half that Claude Code's monitor
+also provides.
 
-1. Ship a pi extension that mirrors the Claude Code inbox monitor. It watches the
-   follower's spool file `<user>/inbox.ndjson` and calls `pi.sendMessage` with
-   `triggerTurn: true` for each new message. The follower that writes the spool is
-   already portable and unchanged.
-2. Package the extension with the plugin so pi discovers it, the same way pi already
-   discovers the skills in `skills/`.
-3. Incoming messages then appear in the active session automatically.
+## Enabling auto-receive on pi
 
-No change to pi is required. Unlike Codex, there is no dependency on an unshipped
-upstream feature.
+1. Install the plugin so pi has the extension: `pi install git:github.com/xhluca/agent-talk`.
+2. Run the agent-talk init skill and choose the `auto` delivery mode. This starts
+   the `receive --follow` follower that writes `<user>/inbox.ndjson`.
+3. Start pi with `AGENT_TALK_PI_SPOOLS` set to that spool path, for example:
+
+   ```bash
+   AGENT_TALK_PI_SPOOLS="<user>/inbox.ndjson" pi
+   ```
+
+   To watch more than one identity in the same session, join their spool paths with
+   a colon. Because the variable is read at startup, it must be set before pi
+   launches; a session already running picks it up only after a relaunch.
+
+With the variable set, an incoming message surfaces in the running session and the
+agent takes a turn to handle it, with no manual polling and no re-running the
+receive skill.
+
+## Verification
+
+The round trip was tested between two live pi sessions on the public relay, each
+running the extension against its own spool with a `receive --follow` follower:
+
+- Alice sent an encrypted message with `retalk send`. Bob's follower decrypted it
+  into his spool, the extension injected it into Bob's running pi session, and Bob's
+  session emitted `turn_start` and a `custom` message with `customType`
+  `agent-talk-inbox` carrying Alice's exact text, about two to three seconds after
+  the send. No polling and no receive-skill call.
+- Bob's session answered the injected question ("What is 17 plus 25?") with `42`,
+  confirming the message reached the agent as real input rather than only being
+  logged.
+- Bob's reply was sent back with `retalk send`, and Alice's live pi session surfaced
+  it the same way, confirming the behavior in both directions.
 
 ## References
 
