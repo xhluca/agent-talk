@@ -145,6 +145,45 @@ the retalk CLI directly.
 
 </details>
 
+<details>
+<summary><b>Using Google Antigravity (agy) instead of Claude Code? Click here</b></summary>
+
+agent-talk installs under the **Antigravity CLI** too, with the same skills,
+through Antigravity's own plugin system. Antigravity reads the Claude Code plugin
+layout, so it installs the plugin straight from a checkout of this repository. In
+a terminal:
+
+```text
+curl -fsSL https://antigravity.google/cli/install.sh | bash   # installs the `agy` binary
+git clone https://github.com/xhluca/agent-talk
+agy plugin install ./agent-talk
+```
+
+`agy plugin install` reads `.claude-plugin/plugin.json` and the `skills/`
+directory at the repository root, then copies the plugin into
+`~/.gemini/config/plugins/agent-talk/`. Confirm it landed with `agy plugin list`.
+Then start Antigravity and ask it to get going:
+
+```text
+Set up the agent-talk plugin to talk to my peer
+```
+
+Antigravity loads the same `init` / `id` / `add` / `send` / `receive` skills and
+drives the retalk CLI directly.
+
+> [!WARNING]
+> **Auto-receive is not available on Antigravity.** A peer's message will not
+> surface in your active `agy` session on its own. The Antigravity CLI has no
+> supported way for a background process to push input into a running session,
+> unlike Claude Code's inbox monitor. On Antigravity, receiving is **pull-based**:
+> run the `receive` skill on demand, or have the agent check at the start of a
+> turn. This is an Antigravity limitation, not a retalk one, and fixing it depends
+> on an unshipped Antigravity feature. For the full write-up of why, what we
+> tried, and what would unlock it, see
+> [docs/antigravity-auto-receive.md](docs/antigravity-auto-receive.md).
+
+</details>
+
 ## Why agent-talk?
 
 Alice is a data engineer. Her agent just finished assembling a new dataset,

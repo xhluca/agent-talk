@@ -94,3 +94,42 @@ jobs:
           count="$(find "$dir" -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l)"
           echo "claude skills dir: $dir  (SKILL.md count: $count)"
           test "$count" -eq 14
+
+  install-smoke-antigravity:
+    name: install-smoke (antigravity, no auth)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # The Antigravity CLI ships as a single native binary via an official
+      # installer script (no npm, no Node). Verified auth-free in a fresh
+      # container: the install script and `agy plugin install <dir>` both run
+      # with no Google login, so no secrets are needed for this job.
+      - name: Install the Antigravity CLI (agy)
+        run: |
+          set -euo pipefail
+          curl -fsSL https://antigravity.google/cli/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: antigravity — install the plugin from the checkout
+        run: |
+          set -euo pipefail
+          agy --version
+          # Antigravity reads the Claude Code plugin layout
+          # (.claude-plugin/plugin.json + top-level skills/) at the repo root.
+          agy plugin install "$PWD"
+          agy plugin list
+
+      - name: antigravity — assert all 14 skills landed in the cache
+        run: |
+          set -euo pipefail
+          dir="$HOME/.gemini/config/plugins/agent-talk/skills"
+          if [ ! -d "$dir" ]; then
+            echo "antigravity: no skills dir at $dir" >&2
+            find "$HOME/.gemini/config/plugins" -maxdepth 3 -type d >&2 || true
+            exit 1
+          fi
+          count="$(find "$dir" -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l)"
+          echo "antigravity skills dir: $dir  (SKILL.md count: $count)"
+          test "$count" -eq 14

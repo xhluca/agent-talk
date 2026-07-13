@@ -175,11 +175,14 @@ def check_marketplace():
 # Markdown balance (nice-to-have)
 # --------------------------------------------------------------------------- #
 def check_markdown_balance():
-    for rel in ("README.md", "docs/README.md"):
+    optional = ("docs/README.md", "docs/codex-auto-receive.md",
+                "docs/antigravity-auto-receive.md")
+    for rel in ("README.md", "docs/README.md", "docs/codex-auto-receive.md",
+                "docs/antigravity-auto-receive.md"):
         path = os.path.join(ROOT, rel)
         if not os.path.isfile(path):
-            # docs/README.md is optional; only flag a missing top-level README.
-            if rel == "README.md":
+            # These docs are optional; only flag a missing top-level README.
+            if rel not in optional:
                 err(f"{rel}: file is missing")
             continue
         with open(path, encoding="utf-8") as fh:

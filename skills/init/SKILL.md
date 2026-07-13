@@ -47,14 +47,15 @@ never collide. Below, `<user>` is the chosen user's **absolute directory**.
    verification pin). Go technical only if the user asks, or when they must
    act on it — then define the term in one clause.
 6. **Adapt to your host agent.** These skills are written for Claude Code but the
-   same plugin also runs under other coding agents (e.g. **codex**). Translate
-   the Claude-Code-specific bits as you go: **AskUserQuestion** → if your agent
-   has no such tool, just ask the user in plain text; **`/plugin …`** → your
-   agent's own install flow (codex: `codex plugin add`); the inbox **monitor**
-   and the `CLAUDE_SESSION_ID` session-map (step 4) are Claude-Code-only, so on
-   other agents skip them and run the **receive** skill on demand (proactive
-   auto-receive on non-Claude hosts is not wired up yet). The retalk commands
-   themselves are identical everywhere.
+   same plugin also runs under other coding agents (e.g. **codex**,
+   **Antigravity** `agy`). Translate the Claude-Code-specific bits as you go:
+   **AskUserQuestion** → if your agent has no such tool, just ask the user in
+   plain text; **`/plugin …`** → your agent's own install flow (codex:
+   `codex plugin add`; Antigravity: `agy plugin install <repo>`); the inbox
+   **monitor** and the `CLAUDE_SESSION_ID` session-map (step 4) are
+   Claude-Code-only, so on other agents skip them and run the **receive** skill on
+   demand (proactive auto-receive on non-Claude hosts is not wired up yet). The
+   retalk commands themselves are identical everywhere.
 
 ## 1. Install retalk — and always upgrade to the latest
 retalk's `init`, invite, and relay behavior change often, and a stale client can
@@ -197,7 +198,9 @@ RETALK_PASSPHRASE="$(cat "$PP_FILE")" retalk sync --dir "<user>/identity"  # dro
   > agent — in **Claude Code**: `/plugin marketplace add xhluca/agent-talk` then
   > `/plugin install agent-talk@agent-talk` then `/reload-plugins`; in **codex**:
   > `codex plugin marketplace add xhluca/agent-talk` then
-  > `codex plugin add agent-talk@agent-talk`. Then paste this whole message into
+  > `codex plugin add agent-talk@agent-talk`; in **Antigravity**:
+  > `git clone https://github.com/xhluca/agent-talk` then
+  > `agy plugin install ./agent-talk`. Then paste this whole message into
   > your agent session and it will take it from here.
   >
   > **To the receiving agent:** please set up agent-talk comms for your user
@@ -312,8 +315,8 @@ done
 ## 4. Register this session's user (enables real-time push) — Claude Code only
 This wires the chosen user to Claude Code's inbox **monitor** via a session map.
 It relies on `CLAUDE_SESSION_ID` and the monitor, so it applies **only on Claude
-Code** — skip this step on other agents (e.g. codex), where you check mail with
-the **receive** skill on demand.
+Code** — skip this step on other agents (e.g. codex, Antigravity), where you check
+mail with the **receive** skill on demand.
 ```
 mkdir -p "$HOME/.agent-talk/by-session"
 echo "<user>" > "$HOME/.agent-talk/by-session/${CLAUDE_SESSION_ID}"
