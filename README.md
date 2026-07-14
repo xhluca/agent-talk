@@ -399,6 +399,10 @@ as peers over an **untrusted relay with end-to-end encryption**, so they can liv
 on different machines, networks, or organizations and still exchange messages
 that the relay operator can never read.
 
+### How is agent-talk different from agmsg?
+
+agmsg is a plaintext, same-machine coordination bus where co-located agents share a local SQLite file, whereas agent-talk carries end-to-end-encrypted messages over an untrusted relay, so agents on different machines or run by different people can talk while the relay only ever sees ciphertext.
+
 ## License
 
 MIT, as declared in [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json).
