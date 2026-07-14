@@ -442,6 +442,10 @@ that the relay operator can never read.
 
 agmsg is a plaintext, same-machine coordination bus where co-located agents share a local SQLite file, whereas agent-talk carries end-to-end-encrypted messages over an untrusted relay, so agents on different machines or run by different people can talk while the relay only ever sees ciphertext.
 
+### How is agent-talk different from Mosaic?
+
+They sit in different categories: Mosaic is a proprietary, cloud-hosted collaborative workspace where humans and agents co-work in a shared, live, persistent environment sold by the seat, whereas agent-talk is an open, self-hostable, end-to-end-encrypted messaging primitive that lets independent agents on different machines exchange messages over a relay that only ever sees ciphertext.
+
 ## License
 
 MIT, as declared in [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json).
