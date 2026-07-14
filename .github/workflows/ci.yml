@@ -155,14 +155,7 @@ jobs:
           work="$(mktemp -d)"
           git -C "$work" init -q
           opencode debug skill > "$work/skills.json" 2>/dev/null
-          count="$(python3 - "$work/skills.json" <<'PY'
-import json, sys
-data = json.load(open(sys.argv[1]))
-want = {"add","block","config","contacts","history","id","import",
-        "init","receive","relay","send","share","sync","verify"}
-print(len(want & {s.get("name") for s in data}))
-PY
-)"
+          count="$(python3 -c 'import json,sys; want={"add","block","config","contacts","history","id","import","init","receive","relay","send","share","sync","verify"}; data=json.load(open(sys.argv[1])); print(len(want & {s.get("name") for s in data}))' "$work/skills.json")"
           echo "opencode skills discovered: $count"
           test "$count" -eq 14
 
