@@ -42,5 +42,6 @@ demos/                   asciinema recordings and rendered GIFs
 monitors/monitors.json   monitor registration
 skills/*/SKILL.md        Claude Code skills for retalk commands
 skills/relay/*.md        relay hosting guides
+extensions/              pi and opencode inbox plugins (auto-receive)
 tests/                   static, monitor, and opt-in E2E tests
 ```

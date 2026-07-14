@@ -2,9 +2,10 @@ name: CI
 
 # Deterministic, LLM-free CI. No model calls, no auth, no secrets.
 #   * validate      — static plugin/skill checks + the repo's LLM-free unit tests.
-#   * install-smoke — proves the plugin *installs* on codex, claude, and pi with
-#                     no authentication and no model calls (verified in a fresh,
-#                     credential-free container before this job was written).
+#   * install-smoke — proves the plugin *installs* on codex, claude, pi, and
+#                     opencode with no authentication and no model calls (verified
+#                     in a fresh, credential-free container before this job was
+#                     written).
 
 on:
   push:
@@ -35,7 +36,7 @@ jobs:
         run: python3 -m unittest discover -s tests -v
 
   install-smoke:
-    name: install-smoke (codex + claude + pi, no auth)
+    name: install-smoke (codex + claude + pi + opencode, no auth)
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -49,7 +50,7 @@ jobs:
 
       - name: Install agent CLIs
         run: |
-          npm i -g @anthropic-ai/claude-code @openai/codex
+          npm i -g @anthropic-ai/claude-code @openai/codex opencode-ai
           npm i -g --ignore-scripts @earendil-works/pi-coding-agent
 
       # ---- codex ------------------------------------------------------------
@@ -133,6 +134,37 @@ jobs:
           printf '%s' "$out" | grep -q 'agent-talk: watching' \
             || { echo "pi: inbox-monitor extension did not attach" >&2; exit 1; }
           echo "pi inbox-monitor extension: attached"
+
+      # ---- opencode ---------------------------------------------------------
+      # Verified auth-free and offline in a fresh container: opencode discovers
+      # SKILL.md files from fixed skill directories (no plugin manifest), so
+      # symlinking this repo's skills/ into ~/.config/opencode/skills makes all
+      # 14 skills discoverable. `opencode debug skill` enumerates them as JSON
+      # with no login and no model call.
+      - name: opencode — install skills into the global skills directory
+        run: |
+          set -euo pipefail
+          opencode --version
+          mkdir -p "$HOME/.config/opencode"
+          ln -s "$PWD/skills" "$HOME/.config/opencode/skills"
+
+      - name: opencode — assert all 14 skills are discovered
+        run: |
+          set -euo pipefail
+          # Run inside a throwaway git repo so opencode resolves a worktree root.
+          work="$(mktemp -d)"
+          git -C "$work" init -q
+          opencode debug skill > "$work/skills.json" 2>/dev/null
+          count="$(python3 - "$work/skills.json" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1]))
+want = {"add","block","config","contacts","history","id","import",
+        "init","receive","relay","send","share","sync","verify"}
+print(len(want & {s.get("name") for s in data}))
+PY
+)"
+          echo "opencode skills discovered: $count"
+          test "$count" -eq 14
 
   install-smoke-antigravity:
     name: install-smoke (antigravity, no auth)

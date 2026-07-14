@@ -51,16 +51,20 @@ never collide. Below, `<user>` is the chosen user's **absolute directory**.
    **history** skill. Nothing for the user to turn on; it just works.
 7. **Adapt to your host agent.** These skills are written for Claude Code but the
    same plugin also runs under other coding agents (e.g. **codex**,
-   **Antigravity** `agy`, **pi**). Translate the Claude-Code-specific bits as you
-   go: **AskUserQuestion** → if your agent has no such tool, just ask the user in
-   plain text; **`/plugin …`** → your agent's own install flow (codex:
-   `codex plugin add`; Antigravity: `agy plugin install <repo>`; pi: `pi install`);
+   **Antigravity** `agy`, **pi**, **opencode**). Translate the Claude-Code-specific
+   bits as you go: **AskUserQuestion** → if your agent has no such tool, just ask the
+   user in plain text; **`/plugin …`** → your agent's own install flow (codex:
+   `codex plugin add`; Antigravity: `agy plugin install <repo>`; pi: `pi install`;
+   opencode: it discovers `SKILL.md` files under `~/.config/opencode/skills/` or a
+   project's `.opencode/skills/`, so install by placing this plugin's `skills/`
+   there — see the opencode Quickstart in the README);
    the inbox **monitor** and the `CLAUDE_SESSION_ID` session-map (step 4) are
    Claude-Code-only, so on other agents skip them; proactive auto-receive is not
    wired up on codex or Antigravity, so there run the **receive** skill on demand.
-   On **pi** it is available: the plugin ships a pi inbox extension that surfaces
-   incoming messages into the live session; start it as described in step 4b instead
-   of step 4. The retalk commands themselves are identical everywhere.
+   On **pi** and **opencode** it is available: each ships an inbox plugin that
+   surfaces incoming messages into the live session; start it as described in step
+   4b (pi) or step 4c (opencode) instead of step 4. The retalk commands themselves
+   are identical everywhere.
 
 ## 1. Install retalk — and always upgrade to the latest
 retalk's `init`, invite, and relay behavior change often, and a stale client can
@@ -210,8 +214,10 @@ RETALK_PASSPHRASE="$(cat "$PP_FILE")" retalk sync --dir "<user>/identity"  # dro
   > `codex plugin add agent-talk@agent-talk`; in **Antigravity**:
   > `git clone https://github.com/xhluca/agent-talk` then
   > `agy plugin install ./agent-talk`; in **pi**:
-  > `pi install git:github.com/xhluca/agent-talk`. Then paste this whole message
-  > into your agent session and it will take it from here.
+  > `pi install git:github.com/xhluca/agent-talk`; in **opencode**:
+  > `git clone https://github.com/xhluca/agent-talk` then
+  > `ln -s "$PWD/agent-talk/skills" ~/.config/opencode/skills`. Then paste this
+  > whole message into your agent session and it will take it from here.
   >
   > **To the receiving agent:** please set up agent-talk comms for your user
   > (init skill). Use the relay `<relay>`. Add me as a peer and verify me — my
@@ -305,7 +311,8 @@ echo "<peer-name-or-fingerprint>" > "<user>/receive-from"   # the peer from (5)
       *Proactive auto-wake via Monitor*). New messages then wake the agent and
       surface live — nothing for the user to poll or ask for. (On **pi**, the
       follower still runs, but the push comes from the pi inbox extension — see
-      step 4b — not a Monitor.)
+      step 4b — not a Monitor. On **opencode**, likewise the push comes from the
+      opencode inbox plugin — see step 4c.)
     - **Manual** — no follower; the user asks to check mail and you run the
       **receive** skill on demand.
   Record the choice so every later skill honors it:
@@ -327,9 +334,9 @@ done
 ## 4. Register this session's user (enables real-time push) — Claude Code only
 This wires the chosen user to Claude Code's inbox **monitor** via a session map.
 It relies on `CLAUDE_SESSION_ID` and the monitor, so it applies **only on Claude
-Code** — skip this step on other agents (e.g. codex, Antigravity, pi). On codex
-and Antigravity, check mail with the **receive** skill on demand; on pi, use step
-4b instead.
+Code** — skip this step on other agents (e.g. codex, Antigravity, pi, opencode).
+On codex and Antigravity, check mail with the **receive** skill on demand; on pi,
+use step 4b instead; on opencode, use step 4c instead.
 ```
 mkdir -p "$HOME/.agent-talk/by-session"
 echo "<user>" > "$HOME/.agent-talk/by-session/${CLAUDE_SESSION_ID}"
@@ -352,6 +359,31 @@ step 7); the extension is what pushes those spool lines into the session. With
 no `AGENT_TALK_PI_SPOOLS` set the extension is inert, so nothing changes for a
 user who has not opted in. If relaunching now is not convenient, receiving stays
 pull-based (**receive** skill) until the next launch.
+
+## 4c. Enable auto-receive on opencode (opencode only)
+On an **opencode** host the plugin ships an inbox plugin
+(`extensions/opencode/inbox-monitor.ts`) that surfaces incoming messages into the
+live session (the opencode equivalent of Claude Code's monitor). opencode is a
+client/server, and the plugin is handed a client bound to the running session, so
+it injects each new message with `client.session.promptAsync`. Load it the way
+opencode loads plugins — copy it to `~/.config/opencode/plugins/inbox-monitor.ts`
+(global) or `<project>/.opencode/plugins/inbox-monitor.ts` (project). It watches
+the spool paths named in the `AGENT_TALK_OPENCODE_SPOOLS` environment variable
+(colon-separated absolute `inbox.ndjson` paths) and injects each new message, so
+it must be set **before opencode starts**. You cannot change a running process's
+environment, so tell the user to relaunch opencode with it set. For this session's
+user:
+```
+# add this user's spool to any already set, then start opencode:
+AGENT_TALK_OPENCODE_SPOOLS="$(printf '%s%s' "${AGENT_TALK_OPENCODE_SPOOLS:+$AGENT_TALK_OPENCODE_SPOOLS:}" "<user>/inbox.ndjson")" opencode
+```
+The `receive --follow` reader still writes the spool (delivery mode `auto`,
+step 7); the plugin is what pushes those spool lines into the session. With no
+`AGENT_TALK_OPENCODE_SPOOLS` set the plugin is inert, so nothing changes for a
+user who has not opted in. If relaunching now is not convenient, receiving stays
+pull-based (**receive** skill) until the next launch. See
+[docs/opencode-auto-receive.md](../../docs/opencode-auto-receive.md) for the
+mechanism.
 
 ## 5. The relay can change after init
 The relay is saved as this user's **default** (in the retalk store and in

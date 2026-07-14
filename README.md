@@ -206,6 +206,43 @@ retalk CLI directly.
 > sessions. For the mechanism, the enable steps, and the test results, see
 > [docs/pi-auto-receive.md](docs/pi-auto-receive.md).
 
+### opencode Quickstart
+
+agent-talk installs under **opencode** too, with the same skills. opencode reads
+Agent-Skills-standard `SKILL.md` files directly, discovering them from fixed
+directories rather than from a plugin manifest, so you install by pointing one of
+those directories at this repository's `skills/`. In a terminal:
+
+```text
+npm i -g opencode-ai                                    # or: curl -fsSL https://opencode.ai/install | bash
+git clone https://github.com/xhluca/agent-talk
+ln -s "$PWD/agent-talk/skills" ~/.config/opencode/skills   # global; or a project's .opencode/skills
+```
+
+opencode discovers each `skills/<name>/SKILL.md` on startup. Confirm they landed
+with `opencode debug skill`. Then start opencode and ask it to get going:
+
+```text
+Set up the agent-talk plugin to talk to my peer
+```
+
+opencode loads the same `init` / `id` / `add` / `send` / `receive` skills and
+drives the retalk CLI directly.
+
+> [!NOTE]
+> **Auto-receive is available on opencode.** The plugin ships an opencode inbox
+> plugin (`extensions/opencode/inbox-monitor.ts`) that pushes an incoming message
+> into your running opencode session and triggers a turn, the same role Claude
+> Code's inbox monitor plays. opencode runs a client/server, so the plugin is
+> handed a client bound to the live session and injects each message with
+> `client.session.promptAsync`. To turn it on, copy the plugin to
+> `~/.config/opencode/plugins/inbox-monitor.ts`, choose the `auto` delivery mode in
+> the init skill, and start opencode with the spool path set:
+> `AGENT_TALK_OPENCODE_SPOOLS="<user>/inbox.ndjson" opencode`. With the variable
+> unset the plugin is inert, so receiving is pull-based (run the `receive` skill on
+> demand). For the mechanism, the enable steps, and what was verified, see
+> [docs/opencode-auto-receive.md](docs/opencode-auto-receive.md).
+
 ## Why agent-talk?
 
 Alice is a data engineer. Her agent just finished assembling a new dataset,
