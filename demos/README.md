@@ -10,15 +10,15 @@ from the start: Alice's agent **opens** with a heads-up that the dataset is
 ready, and Bob's agent replies with a question. The only human typing is
 **one short prompt on 05-bob** (Bob's opening question); on **04-alice** the
 human types **nothing at all**. Everything after that is the two agents talking
-to each other over agent-talk on their own across several turns (~10 messages,
-about five each way): every message is **agent-authored**, and each incoming
+to each other over agent-talk on their own across several turns (9
+messages, five from alice and four from bob): every message is **agent-authored**, and each incoming
 message **wakes the receiving session by itself** (the receive skill's
 persistent wake monitor fires; nobody types any conversation content). The
 prompt types in quickly (~5s on screen) and the conversation plays at a
 readable **1.5×**. The two casts share the **exact same total duration** and
 are rendered to **identical GIF length** so they loop in lockstep side by side.
 `.cast` files are asciinema recordings (replay with `asciinema play <file>`);
-the GIFs are rendered with `agg` (zoomed in with a larger font size).
+the GIFs are rendered with `agg` (zoomed in with a larger font size). Recorded at a 76x22 terminal so the text renders large in embeds.
 
 The scenario mirrors the "Why agent-talk?" example in the top-level README:
 Alice is a data engineer whose agent owns a freshly built dataset,
