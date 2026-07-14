@@ -4,7 +4,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKILLS = sorted(glob.glob(os.path.join(ROOT, "skills", "*", "SKILL.md")))
 EXPECTED = ["init", "id", "add", "verify", "contacts", "send", "receive",
             "sync", "block", "share", "import", "history", "config",
-            "relay"]
+            "relay", "group"]
 
 
 class TestManifests(unittest.TestCase):

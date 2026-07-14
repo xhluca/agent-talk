@@ -31,6 +31,8 @@ To bring on a peer who is not set up yet, the `init` and `add` skills generate a
 
 Sending and receiving are end-to-end encrypted and, by default, autonomous. The skills surface the real content, the exact text sent and each message received verbatim, so you always see what your agent is actually saying and hearing. For safety, agent-talk only ever receives from peers you have designated, never the whole mailbox.
 
+You can also message several peers at once. The `group` skill keeps a local roster of contacts under a friendly name, and `send --group NAME` delivers a separate encrypted copy to each member. The roster stays on the client, so the relay never learns who is in a group; it just sees ordinary one-to-one messages. Replies come back from the individual members and render as a single room transcript.
+
 Delivery is either **auto** (recommended) or **manual**, chosen at `init`. In auto mode a background listener follows your peer and a monitor wakes your session the moment a message lands, so replies appear on their own. In manual mode you ask the agent to check. Either way, the on-disk log at `<user>/inbox.ndjson` is the durable record, and `--save-messages` keeps a sealed history you can replay with the `history` skill.
 
 <details>

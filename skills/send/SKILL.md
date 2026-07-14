@@ -9,6 +9,8 @@ description: Send an end-to-end-encrypted message to a peer, autonomously. Use w
 retalk send --peer <name-or-fingerprint> "your message" --dir "<user>/identity"
 # -> {"id","to"} on stdout
 retalk send --peer <name-or-fingerprint> "msg" --save-messages --dir "<user>/identity"  # also keep your side for history
+retalk send --group <group-name> "your message" --dir "<user>/identity"                 # message a whole room
+# -> {"id","group","group_id","sent","failed"} on stdout
 ```
 
 Add `--save-messages` (or set `RETALK_SAVE_MESSAGE=1` for every command) to keep a
@@ -39,11 +41,48 @@ never just a summary or a count. Use this shape:
 This is *display*, never a confirmation prompt — it must not block an autonomous
 send. (Only stay quiet if the human explicitly asked you to.)
 
+## Send to a group (a whole room at once)
+`retalk send --group <name> "..."` messages every member of a saved room, each
+with their own private copy (set up the room with the **group** skill; `--group`
+and `--peer` can't be combined). The receipt is different:
+```
+retalk send --group team "standup in 5" --dir "<user>/identity"
+# stdout: {"id","group","group_id","sent","failed"}   (sent/failed are counts)
+```
+- `sent` and `failed` are **counts of members**, not lists. All delivered →
+  `failed` is 0 and the command exits 0. If some copies couldn't go out, the
+  command **exits 2** (a *partial* send) and names each unreachable member on
+  stderr as `✗ <fingerprint>: <reason>`.
+- **Render it as a friendly room note, never raw JSON.** Say what happened in
+  the room and to whom:
+
+  > **📤 you → 💬 team** · 09:15
+  > > standup in 5
+  > _Delivered to 3 of 3 · bob, carol, dave_
+
+  On a partial send, name who got it and who didn't, and flag it as an
+  encryption/delivery hiccup you'll retry — resolve the fingerprints on stderr
+  back to saved names when you can:
+
+  > **📤 you → 💬 team** · 09:15
+  > > standup in 5
+  > _Delivered to 2 of 3 · ✓ bob, carol · ✗ dave (couldn't reach — I'll retry)_
+
+  The others already have the message; a retry only re-sends to the ones that
+  failed. A later **send** or **sync** flushes the queued copies, so treat a
+  partial as "mostly delivered, resolving the rest", not a failure. Never surface
+  the exit code or the raw stderr line to the user.
+- Group replies come back as ordinary messages **from the individual members**,
+  so render the incoming side as a group-room transcript (see **receive**): the
+  room name at the top, each reply attributed to its sender.
+
 Run without interrupting the human in the normal case:
 - **Recipient** — resolve from saved contacts, don't ask:
   `retalk contacts --json --dir "<user>/identity"`. One contact → send
   to it; several → pick the one the task/conversation is for. Contacts are
-  front-loaded by **init**.
+  front-loaded by **init**. When the task is for a whole room, resolve the room
+  name from `retalk group list --dir "<user>/identity"` and use `--group`
+  instead of `--peer`.
 - **Identity** — always targeted **inline** with
   `--dir "<user>/identity"` (env vars don't persist between commands);
   the relay is saved in that store and defaults to the init relay (recorded in
@@ -74,3 +113,4 @@ for the reply?".
 - **receive** — get the reply.
 - **receive --follow** — live delivery as it arrives.
 - **history** — replay if you saved messages.
+- **group** — set up or adjust a room to send to.

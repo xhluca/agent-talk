@@ -58,7 +58,7 @@ jobs:
           codex plugin marketplace add "$PWD"
           codex plugin add agent-talk@agent-talk
 
-      - name: codex — assert all 14 skills landed in the cache
+      - name: codex — assert all 15 skills landed in the cache
         run: |
           set -euo pipefail
           root="$HOME/.codex/plugins/cache/agent-talk/agent-talk"
@@ -70,7 +70,7 @@ jobs:
           fi
           count="$(find "$dir" -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l)"
           echo "codex skills dir: $dir  (SKILL.md count: $count)"
-          test "$count" -eq 14
+          test "$count" -eq 15
 
       # ---- claude -----------------------------------------------------------
       # Verified auth-free in a fresh container: `claude plugin marketplace add` +
@@ -81,7 +81,7 @@ jobs:
           claude plugin marketplace add "$PWD"
           claude plugin install agent-talk@agent-talk
 
-      - name: claude — assert all 14 skills landed in the cache
+      - name: claude — assert all 15 skills landed in the cache
         run: |
           set -euo pipefail
           root="$HOME/.claude/plugins/cache/agent-talk/agent-talk"
@@ -93,4 +93,4 @@ jobs:
           fi
           count="$(find "$dir" -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l)"
           echo "claude skills dir: $dir  (SKILL.md count: $count)"
-          test "$count" -eq 14
+          test "$count" -eq 15

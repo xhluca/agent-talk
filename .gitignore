@@ -6,3 +6,5 @@ __pycache__/
 .venv/
 venv/
 .demo-tools/
+# retalk relay database (local test artifact, never committed)
+server.db

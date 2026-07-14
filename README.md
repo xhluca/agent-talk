@@ -223,7 +223,8 @@ Client skills mirror retalk subcommands and workflow steps.
 | `add` | Save a peer fingerprint under a local name. |
 | `verify` | Fetch and pin a saved peer's keys before messaging. |
 | `contacts` | List, show, export, or remove saved peers. |
-| `send` | Send an encrypted message to a saved peer. |
+| `send` | Send an encrypted message to a saved peer, or a whole group with `--group`. |
+| `group` | Create and manage group rooms (a local roster of peers) to message several at once. |
 | `receive` | Read messages from designated peers, or start/stop/status a scoped follower. |
 | `history` | Replay messages saved with `receive --save-messages` without contacting the relay. |
 | `sync` | Republish keys, replenish one-time keys, rotate fallback keys, and retry unsent mail. |

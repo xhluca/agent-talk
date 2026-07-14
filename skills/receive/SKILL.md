@@ -54,6 +54,46 @@ follower pushes in. Use this shape:
 This is *display*, never a confirmation prompt — it must not block an autonomous
 receive. (Only stay quiet if the human explicitly asked you to.)
 
+## Group-room messages — render the room, not a 1:1
+A received message may carry two extra fields, `group` (the room's name) and
+`group_id` (its stable 32-hex id). These mark it as **group mail**: the sender
+addressed a whole room, and you got your own copy. Keep the 1:1 rendering above
+for messages without them; when they're present, render a **group-room
+transcript** instead:
+
+```
+### 💬 team
+**📥 bob** · 14:30
+> standup in 5
+
+**📥 carol** · 14:31
+> on my way
+
+**📤 you** · 14:32
+> 2 min
+```
+
+- Head the block with the **room name** (`💬 <group>`), then each message
+  oldest → newest, **attributed to its sender** by name — several different
+  people, not one peer. `📥` + the sender's **bold** name for incoming, `📤`
+  **you** for your own group sends.
+- **Distinguish senders consistently.** Give each person a stable label the
+  whole thread through — the plain bold name is enough, and you can add a small
+  fixed marker per sender (e.g. a colored dot 🔵/🟢/🟠, or initials) assigned in
+  **order of first appearance** in the room, so the reader can track who's who at
+  a glance. Reuse the same marker for the same sender every time.
+- **Thread by `group_id`, not by name.** Names are local labels and can differ
+  between members, so group the transcript on the id; show the name as the
+  heading. Different rooms → different transcripts.
+- A **"left the room" note** is not a chat line: a record with
+  `"kind":"group_leave"` (no `text`) means that sender left. Render it as a quiet
+  system line inside the room, not a message bubble:
+
+  > _carol left the room_
+
+  retalk drops them from the room's roster automatically, so you'll stop sending
+  them copies — nothing for you to do.
+
 ## One-shot read
 Individual (the usual case):
 ```
@@ -67,12 +107,20 @@ retalk contacts --json --dir "<user>/identity" | jq -r .fingerprint | while read
 done
 ```
 
-## Shared contacts (a second record kind)
-A received record is either a chat message (`{id,from,name,text}`) or a
-**shared contact** (`{id,from,name,"kind":"contact","card":{...}}`). Contact
-cards are also **staged** to a contact-inbox automatically. Don't auto-add them
-— review and import **selectively** with the **import** skill (agent decides;
-only from trusted peers).
+## Other record kinds (not chat)
+A received record is usually a chat message (`{id,from,name,text}`, optionally
+with `group`/`group_id`), but the stream also carries control records. Tell them
+apart by the fields, and don't render a control record as a chat bubble:
+- **Shared contact** — `{id,from,name,"kind":"contact","card":{...}}`. Contact
+  cards are also **staged** to a contact-inbox automatically. Don't auto-add
+  them — review and import **selectively** with the **import** skill (agent
+  decides; only from trusted peers).
+- **Group leave** — `{id,from,name,"kind":"group_leave","group_id"}` (no
+  `text`). The sender left that room; retalk drops them from its roster for you.
+  Show it as the quiet "left the room" line in the group transcript above.
+
+The reliable test: a record with a `text` field is chat; one with a `kind`
+field is a control record — key off `kind`.
 
 ## Keeping a durable log (optional)
 - Add `--save-messages` to any `receive` (one-shot or `--follow`) to also keep a
@@ -168,6 +216,7 @@ Restart=always
 ```
 
 ## Next
-- **send** — reply to the sender.
+- **send** — reply to the sender (or the whole room with `--group`).
 - **contacts** — see who's saved.
+- **group** — see or adjust a room's members.
 - **block** — drop an unwanted sender.
