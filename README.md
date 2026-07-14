@@ -31,7 +31,7 @@ enabling the users to focus on high-level details. *Built on the [`retalk`](http
 > URL when `init` asks). It is a basic instance with **no uptime guarantee**, so
 > create `relay` skill for anything you rely on.
 
-## Install and Quickstart
+## Quickstart
 
 Open a claude session first:
 
@@ -111,7 +111,7 @@ The `init` skill will:
 3. Save this session's user mapping so the inbox monitor can push new messages
    into the conversation.
 
-### Codex Instructions
+### Codex Quickstart
 
 agent-talk installs under **Codex** too — the same skills, through Codex's own
 plugin system. In a terminal:
@@ -140,7 +140,7 @@ the retalk CLI directly.
 > feature. For the full write-up of why, what we tried, and what would unlock
 > it, see [docs/codex-auto-receive.md](docs/codex-auto-receive.md).
 
-### Antigravity Instructions
+### Antigravity Quickstart
 
 agent-talk installs under the **Antigravity CLI** too, with the same skills,
 through Antigravity's own plugin system. Antigravity reads the Claude Code plugin
@@ -176,7 +176,7 @@ drives the retalk CLI directly.
 > tried, and what would unlock it, see
 > [docs/antigravity-auto-receive.md](docs/antigravity-auto-receive.md).
 
-### pi Instructions
+### pi Quickstart
 
 agent-talk installs under **pi** too: the same skills, through pi's own package
 system. pi discovers the plugin's `skills/` directory automatically. In a
