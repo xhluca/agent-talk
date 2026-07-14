@@ -2,10 +2,10 @@ name: CI
 
 # Deterministic, LLM-free CI. No model calls, no auth, no secrets.
 #   * validate      — static plugin/skill checks + the repo's LLM-free unit tests.
-#   * install-smoke — proves the plugin *installs* on codex, claude, pi, and
-#                     opencode with no authentication and no model calls (verified
-#                     in a fresh, credential-free container before this job was
-#                     written).
+#   * install-smoke — proves the plugin *installs* on codex, claude, pi,
+#                     opencode, and GitHub Copilot CLI with no authentication and no
+#                     model calls (verified in a fresh, credential-free container
+#                     before this job was written).
 
 on:
   push:
@@ -36,7 +36,7 @@ jobs:
         run: python3 -m unittest discover -s tests -v
 
   install-smoke:
-    name: install-smoke (codex + claude + pi + opencode, no auth)
+    name: install-smoke (codex + claude + pi + opencode + copilot, no auth)
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -50,7 +50,7 @@ jobs:
 
       - name: Install agent CLIs
         run: |
-          npm i -g @anthropic-ai/claude-code @openai/codex opencode-ai
+          npm i -g @anthropic-ai/claude-code @openai/codex opencode-ai @github/copilot
           npm i -g --ignore-scripts @earendil-works/pi-coding-agent
 
       # ---- codex ------------------------------------------------------------
@@ -157,6 +157,27 @@ jobs:
           opencode debug skill > "$work/skills.json" 2>/dev/null
           count="$(python3 -c 'import json,sys; want={"add","block","config","contacts","group","history","id","import","init","receive","relay","send","share","sync","verify"}; data=json.load(open(sys.argv[1])); print(len(want & {s.get("name") for s in data}))' "$work/skills.json")"
           echo "opencode skills discovered: $count"
+          test "$count" -eq 15
+
+      # ---- GitHub Copilot CLI ----------------------------------------------
+      # Verified auth-free and offline in a fresh container: the standalone
+      # `copilot` command (npm @github/copilot) discovers SKILL.md files from fixed
+      # skill directories (no plugin manifest), so symlinking this repo's skills/
+      # into ~/.copilot/skills makes all 15 skills discoverable. `copilot skill
+      # list --json` enumerates them with no login and no model call.
+      - name: copilot — install skills into the personal skills directory
+        run: |
+          set -euo pipefail
+          copilot --version
+          mkdir -p "$HOME/.copilot"
+          ln -s "$PWD/skills" "$HOME/.copilot/skills"
+
+      - name: copilot — assert all 15 skills are discovered
+        run: |
+          set -euo pipefail
+          copilot skill list --json > "$RUNNER_TEMP/copilot-skills.json"
+          count="$(python3 -c 'import json,sys; want={"add","block","config","contacts","group","history","id","import","init","receive","relay","send","share","sync","verify"}; data=json.load(open(sys.argv[1])); print(len(want & {s.get("name") for s in data}))' "$RUNNER_TEMP/copilot-skills.json")"
+          echo "copilot skills discovered: $count"
           test "$count" -eq 15
 
   install-smoke-antigravity:

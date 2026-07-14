@@ -51,16 +51,21 @@ never collide. Below, `<user>` is the chosen user's **absolute directory**.
    **history** skill. Nothing for the user to turn on; it just works.
 7. **Adapt to your host agent.** These skills are written for Claude Code but the
    same plugin also runs under other coding agents (e.g. **codex**,
-   **Antigravity** `agy`, **pi**, **opencode**). Translate the Claude-Code-specific
+   **Antigravity** `agy`, **pi**, **opencode**, **GitHub Copilot CLI** `copilot`).
+   Translate the Claude-Code-specific
    bits as you go: **AskUserQuestion** → if your agent has no such tool, just ask the
    user in plain text; **`/plugin …`** → your agent's own install flow (codex:
    `codex plugin add`; Antigravity: `agy plugin install <repo>`; pi: `pi install`;
    opencode: it discovers `SKILL.md` files under `~/.config/opencode/skills/` or a
    project's `.opencode/skills/`, so install by placing this plugin's `skills/`
-   there — see the opencode Quickstart in the README);
+   there — see the opencode Quickstart in the README; Copilot CLI: it discovers
+   `SKILL.md` files under `~/.copilot/skills/` (personal) or a project's
+   `.github/skills/`, `.claude/skills/`, or `.agents/skills/`, so install by placing
+   this plugin's `skills/` there — see the Copilot Quickstart in the README);
    the inbox **monitor** and the `CLAUDE_SESSION_ID` session-map (step 4) are
    Claude-Code-only, so on other agents skip them; proactive auto-receive is not
-   wired up on codex or Antigravity, so there run the **receive** skill on demand.
+   wired up on codex, Antigravity, or Copilot CLI, so there run the **receive** skill
+   on demand.
    On **pi** and **opencode** it is available: each ships an inbox plugin that
    surfaces incoming messages into the live session; start it as described in step
    4b (pi) or step 4c (opencode) instead of step 4. The retalk commands themselves
@@ -216,7 +221,9 @@ RETALK_PASSPHRASE="$(cat "$PP_FILE")" retalk sync --dir "<user>/identity"  # dro
   > `agy plugin install ./agent-talk`; in **pi**:
   > `pi install git:github.com/xhluca/agent-talk`; in **opencode**:
   > `git clone https://github.com/xhluca/agent-talk` then
-  > `ln -s "$PWD/agent-talk/skills" ~/.config/opencode/skills`. Then paste this
+  > `ln -s "$PWD/agent-talk/skills" ~/.config/opencode/skills`; in
+  > **GitHub Copilot CLI**: `git clone https://github.com/xhluca/agent-talk` then
+  > `ln -s "$PWD/agent-talk/skills" ~/.copilot/skills`. Then paste this
   > whole message into your agent session and it will take it from here.
   >
   > **To the receiving agent:** please set up agent-talk comms for your user
@@ -334,9 +341,10 @@ done
 ## 4. Register this session's user (enables real-time push) — Claude Code only
 This wires the chosen user to Claude Code's inbox **monitor** via a session map.
 It relies on `CLAUDE_SESSION_ID` and the monitor, so it applies **only on Claude
-Code** — skip this step on other agents (e.g. codex, Antigravity, pi, opencode).
-On codex and Antigravity, check mail with the **receive** skill on demand; on pi,
-use step 4b instead; on opencode, use step 4c instead.
+Code** — skip this step on other agents (e.g. codex, Antigravity, pi, opencode,
+Copilot CLI).
+On codex, Antigravity, and Copilot CLI, check mail with the **receive** skill on
+demand; on pi, use step 4b instead; on opencode, use step 4c instead.
 ```
 mkdir -p "$HOME/.agent-talk/by-session"
 echo "<user>" > "$HOME/.agent-talk/by-session/${CLAUDE_SESSION_ID}"

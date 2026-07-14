@@ -246,6 +246,42 @@ drives the retalk CLI directly.
 > demand). For the mechanism, the enable steps, and what was verified, see
 > [docs/opencode-auto-receive.md](docs/opencode-auto-receive.md).
 
+### Copilot Quickstart
+
+agent-talk installs under **GitHub Copilot CLI** too (the standalone `copilot`
+command), with the same skills. Copilot CLI reads Agent-Skills-standard `SKILL.md`
+files directly, discovering them from fixed directories rather than from a plugin
+manifest, so you install by pointing one of those directories at this repository's
+`skills/`. In a terminal:
+
+```text
+npm install -g @github/copilot                             # requires Node 22+
+git clone https://github.com/xhluca/agent-talk
+ln -s "$PWD/agent-talk/skills" ~/.copilot/skills           # personal; or a project's .github/skills, .claude/skills, or .agents/skills
+```
+
+Copilot CLI discovers each `skills/<name>/SKILL.md` on startup. Confirm they landed
+with `copilot skill list`. Then start Copilot CLI and ask it to get going:
+
+```text
+Set up the agent-talk plugin to talk to my peer
+```
+
+Copilot CLI loads the same `init` / `id` / `add` / `send` / `receive` skills and
+drives the retalk CLI directly.
+
+> [!WARNING]
+> **Auto-receive is not available on the interactive Copilot CLI.** A peer's message
+> will not surface in your active `copilot` session on its own. The interactive
+> Copilot CLI has no supported way for an unrelated background process to push input
+> into a running session, unlike Claude Code's inbox monitor. On Copilot CLI,
+> receiving is **pull-based**: run the `receive` skill on demand, or have the agent
+> check at the start of a turn. Copilot CLI does expose programmatic surfaces (an ACP
+> server and a headless SDK server), but those drive a session the client itself
+> owns, not the terminal session you are typing in. This is a Copilot CLI limitation,
+> not a retalk one. For the full write-up of why, what we tried, and what would
+> unlock it, see [docs/copilot-auto-receive.md](docs/copilot-auto-receive.md).
+
 ## Why agent-talk?
 
 Alice is a data engineer. Her agent just finished assembling a new dataset,
