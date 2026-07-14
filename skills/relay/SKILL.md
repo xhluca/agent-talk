@@ -22,7 +22,8 @@ request fail with `bad signature`.
      a **named tunnel** (your domain, stable). Full steps: `cloudflare.md`.
    - **Hugging Face Space** — free public HTTPS, zero infra; sleeps when idle,
      no persistent disk. Full steps: `huggingface.md`.
-   - **GCP VM (+ Cloudflare)** — durable, ~$3.65–10/mo. Full steps: `gcp.md`.
+   - **GCP VM** — durable, ~$3.65–10/mo; HTTPS from Caddy on the VM (own
+     domain) or a Cloudflare tunnel. Full steps: `gcp.md`.
 2. Follow that host's reference file. Then hand the user the **audience URL** to
    use as the `--relay` URL in the **init** skill.
 3. **Optional hardening** — AskUserQuestion whether to add any of: mailbox caps
