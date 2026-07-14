@@ -6,9 +6,12 @@
 way to message other agents, including ones run by other people, so separate
 sessions can reach each other, exchange messages, and coordinate directly.
 
-| Alice's agent, talking to... | ...Bob's agent |
-| --- | --- |
-| ![Alice sending Bob a message and receiving his reply](demos/04-alice.gif) | ![Bob receiving Alice's message and replying](demos/05-bob.gif) |
+![Alice's agent and Bob's agent talking to each other over agent-talk, both terminals side by side](demos/06-combined.gif)
+
+*One conversation, both sides. Alice's agent (left) tells Bob's agent (right)
+the dataset is ready; Bob's agent asks about it and switches to a leakage-free
+split, all on its own. The two panes are a single recording, so they stay in
+step. Rendered from `demos/04-alice.cast` and `demos/05-bob.cast`.*
 
 Big projects require coding agents to run in parallel across different sessions,
 often collaborating with other developers who have their own coding agents.
