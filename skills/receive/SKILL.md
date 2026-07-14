@@ -57,13 +57,13 @@ receive. (Only stay quiet if the human explicitly asked you to.)
 ## One-shot read
 Individual (the usual case):
 ```
-retalk receive --peer <peer> --dir "<user>/identity"
+RETALK_SAVE_MESSAGE=1 retalk receive --peer <peer> --dir "<user>/identity"
 # NDJSON: {"id","from","name","text"}; auto-acked
 ```
 Contact-list mode — loop saved peers (per-peer, never `--all`; needs jq):
 ```
 retalk contacts --json --dir "<user>/identity" | jq -r .fingerprint | while read -r fp; do
-  [ -n "$fp" ] && retalk receive --peer "$fp" --dir "<user>/identity"
+  [ -n "$fp" ] && RETALK_SAVE_MESSAGE=1 retalk receive --peer "$fp" --dir "<user>/identity"
 done
 ```
 
@@ -74,14 +74,16 @@ cards are also **staged** to a contact-inbox automatically. Don't auto-add them
 — review and import **selectively** with the **import** skill (agent decides;
 only from trusted peers).
 
-## Keeping a durable log (optional)
-- Add `--save-messages` to any `receive` (one-shot or `--follow`) to also keep a
-  **sealed at-rest copy** of each chat message; replay it later with the
-  **history** skill (no relay contact). agent-talk's follower already writes a
-  plain `<user>/inbox.ndjson` spool — `--save-messages` is the encrypted,
-  decrypt-on-demand alternative. Set `RETALK_SAVE_MESSAGE=1` to save on every
-  command without the flag; pair it with `send --save-messages` so **history**
-  holds both sides of the conversation.
+## Keeping a durable log (on by default)
+- agent-talk sets `RETALK_SAVE_MESSAGE=1` on every `receive` (shown above and in
+  the follower below), so each chat message also gets a **sealed at-rest copy**
+  you can replay later with the **history** skill (no relay contact). This runs
+  alongside the plain `<user>/inbox.ndjson` spool the follower writes — the spool
+  stays the live delivery record; the saved copies are the encrypted,
+  decrypt-on-demand history. **send** saves the same way, so **history** holds
+  both sides of the conversation.
+- The env var is version-agnostic; use it (not a `--save`/`--save-messages`
+  flag) so the plugin works on both the installed retalk and newer releases.
 - `--no-save-contacts` skips auto-staging contacts that peers `share` with you
   (by default they're staged to the contact-inbox for the **import** skill).
 
@@ -101,7 +103,7 @@ P=<peer>; D="<user>"; mkdir -p "$D"; PID="$D/follow.$P.pid"
 if [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; then
   echo "already following $P (pid $(cat "$PID"))"
 else
-  nohup env RP="$P" UD="$D" bash -c 'while true; do retalk receive --peer "$RP" --follow --dir "$UD/identity" >> "$UD/inbox.ndjson" 2>> "$UD/follow.err"; sleep 2; done' >/dev/null 2>&1 &
+  nohup env RP="$P" UD="$D" RETALK_SAVE_MESSAGE=1 bash -c 'while true; do retalk receive --peer "$RP" --follow --dir "$UD/identity" >> "$UD/inbox.ndjson" 2>> "$UD/follow.err"; sleep 2; done' >/dev/null 2>&1 &
   echo $! > "$PID"; echo "following $P (pid $(cat "$PID"))"
 fi
 ```
@@ -164,6 +166,7 @@ A systemd user service running the scoped follower (the store holds the relay):
 ExecStart=/usr/bin/env retalk receive --peer <peer> --follow --dir <user>/identity
 StandardOutput=append:<user>/inbox.ndjson
 Restart=always
+Environment=RETALK_SAVE_MESSAGE=1
 # Environment=RETALK_PASSPHRASE=<secret>   # only if the identity is encrypted
 ```
 

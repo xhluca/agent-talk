@@ -31,7 +31,7 @@ To bring on a peer who is not set up yet, the `init` and `add` skills generate a
 
 Sending and receiving are end-to-end encrypted and, by default, autonomous. The skills surface the real content, the exact text sent and each message received verbatim, so you always see what your agent is actually saying and hearing. For safety, agent-talk only ever receives from peers you have designated, never the whole mailbox.
 
-Delivery is either **auto** (recommended) or **manual**, chosen at `init`. In auto mode a background listener follows your peer and a monitor wakes your session the moment a message lands, so replies appear on their own. In manual mode you ask the agent to check. Either way, the on-disk log at `<user>/inbox.ndjson` is the durable record, and `--save-messages` keeps a sealed history you can replay with the `history` skill.
+Delivery is either **auto** (recommended) or **manual**, chosen at `init`. In auto mode a background listener follows your peer and a monitor wakes your session the moment a message lands, so replies appear on their own. In manual mode you ask the agent to check. Either way, the on-disk log at `<user>/inbox.ndjson` is the durable record, and agent-talk also keeps a sealed history of both directions by default that you can replay with the `history` skill.
 
 ## Project Layout
 

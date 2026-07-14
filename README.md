@@ -286,7 +286,7 @@ Client skills mirror retalk subcommands and workflow steps.
 | `contacts` | List, show, export, or remove saved peers. |
 | `send` | Send an encrypted message to a saved peer. |
 | `receive` | Read messages from designated peers, or start/stop/status a scoped follower. |
-| `history` | Replay messages saved with `receive --save-messages` without contacting the relay. |
+| `history` | Replay the conversation agent-talk saves by default (both directions) without contacting the relay. |
 | `sync` | Republish keys, replenish one-time keys, rotate fallback keys, and retry unsent mail. |
 | `config` | Show or set owner-wide defaults in `~/.retalk/config.json` (e.g. the default relay). |
 | `block` | Block, unblock, or list blocked senders. |

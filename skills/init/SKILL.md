@@ -46,7 +46,10 @@ never collide. Below, `<user>` is the chosen user's **absolute directory**.
    resolving". The **fingerprint** stays user-facing (it's their address and
    verification pin). Go technical only if the user asks, or when they must
    act on it — then define the term in one clause.
-6. **Adapt to your host agent.** These skills are written for Claude Code but the
+6. **Save the conversation by default.** agent-talk keeps a local copy of every
+   message it sends and receives, so the whole conversation is replayable with the
+   **history** skill. Nothing for the user to turn on; it just works.
+7. **Adapt to your host agent.** These skills are written for Claude Code but the
    same plugin also runs under other coding agents (e.g. **codex**,
    **Antigravity** `agy`, **pi**). Translate the Claude-Code-specific bits as you
    go: **AskUserQuestion** → if your agent has no such tool, just ask the user in
@@ -167,6 +170,10 @@ case "${root:+$PP_FILE}" in "$root"/*) p="${PP_FILE#"$root"/}"; grep -qxF "$p" "
       `RETALK_PASSPHRASE=<secret>` on each command (or store it the same way).
     - **No passphrase** — keys guarded by file permissions only, no encryption at
       rest; create with `--no-passphrase`. Lowest friction, least protection.
+      Note: since agent-talk saves the conversation by default, on a
+      `--no-passphrase` identity the saved message bodies get the same weak
+      at-rest protection (file permissions only); a passphrase-encrypted identity
+      (the recommended default) seals them, so this is only a concern here.
 - Create the identity (encrypted with the chosen passphrase, or `--no-passphrase`):
 ```
 # Claude-managed / custom passphrase:
