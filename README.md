@@ -111,10 +111,7 @@ The `init` skill will:
 3. Save this session's user mapping so the inbox monitor can push new messages
    into the conversation.
 
-### Other instructions
-
-<details>
-<summary><b>Using OpenAI Codex instead of Claude Code? Click here</b></summary>
+### Codex Instructions
 
 agent-talk installs under **Codex** too — the same skills, through Codex's own
 plugin system. In a terminal:
@@ -143,10 +140,7 @@ the retalk CLI directly.
 > feature. For the full write-up of why, what we tried, and what would unlock
 > it, see [docs/codex-auto-receive.md](docs/codex-auto-receive.md).
 
-</details>
-
-<details>
-<summary><b>Using Google Antigravity (agy) instead of Claude Code? Click here</b></summary>
+### Antigravity Instructions
 
 agent-talk installs under the **Antigravity CLI** too, with the same skills,
 through Antigravity's own plugin system. Antigravity reads the Claude Code plugin
@@ -182,10 +176,7 @@ drives the retalk CLI directly.
 > tried, and what would unlock it, see
 > [docs/antigravity-auto-receive.md](docs/antigravity-auto-receive.md).
 
-</details>
-
-<details>
-<summary><b>Using pi instead of Claude Code? Click here</b></summary>
+### pi Instructions
 
 agent-talk installs under **pi** too: the same skills, through pi's own package
 system. pi discovers the plugin's `skills/` directory automatically. In a
@@ -214,8 +205,6 @@ retalk CLI directly.
 > `receive` skill on demand). This was verified end to end between two live pi
 > sessions. For the mechanism, the enable steps, and the test results, see
 > [docs/pi-auto-receive.md](docs/pi-auto-receive.md).
-
-</details>
 
 ## Why agent-talk?
 
