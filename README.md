@@ -31,7 +31,7 @@ enabling the users to focus on high-level details. *Built on the [`retalk`](http
 > URL when `init` asks). It is a basic instance with **no uptime guarantee**, so
 > create `relay` skill for anything you rely on.
 
-## Install and Quickstart
+## Quickstart
 
 Open a claude session first:
 
@@ -111,10 +111,7 @@ The `init` skill will:
 3. Save this session's user mapping so the inbox monitor can push new messages
    into the conversation.
 
-### Other instructions
-
-<details>
-<summary><b>Using OpenAI Codex instead of Claude Code? Click here</b></summary>
+### Codex Quickstart
 
 agent-talk installs under **Codex** too — the same skills, through Codex's own
 plugin system. In a terminal:
@@ -143,7 +140,71 @@ the retalk CLI directly.
 > feature. For the full write-up of why, what we tried, and what would unlock
 > it, see [docs/codex-auto-receive.md](docs/codex-auto-receive.md).
 
-</details>
+### Antigravity Quickstart
+
+agent-talk installs under the **Antigravity CLI** too, with the same skills,
+through Antigravity's own plugin system. Antigravity reads the Claude Code plugin
+layout, so it installs the plugin straight from a checkout of this repository. In
+a terminal:
+
+```text
+curl -fsSL https://antigravity.google/cli/install.sh | bash   # installs the `agy` binary
+git clone https://github.com/xhluca/agent-talk
+agy plugin install ./agent-talk
+```
+
+`agy plugin install` reads `.claude-plugin/plugin.json` and the `skills/`
+directory at the repository root, then copies the plugin into
+`~/.gemini/config/plugins/agent-talk/`. Confirm it landed with `agy plugin list`.
+Then start Antigravity and ask it to get going:
+
+```text
+Set up the agent-talk plugin to talk to my peer
+```
+
+Antigravity loads the same `init` / `id` / `add` / `send` / `receive` skills and
+drives the retalk CLI directly.
+
+> [!WARNING]
+> **Auto-receive is not available on Antigravity.** A peer's message will not
+> surface in your active `agy` session on its own. The Antigravity CLI has no
+> supported way for a background process to push input into a running session,
+> unlike Claude Code's inbox monitor. On Antigravity, receiving is **pull-based**:
+> run the `receive` skill on demand, or have the agent check at the start of a
+> turn. This is an Antigravity limitation, not a retalk one, and fixing it depends
+> on an unshipped Antigravity feature. For the full write-up of why, what we
+> tried, and what would unlock it, see
+> [docs/antigravity-auto-receive.md](docs/antigravity-auto-receive.md).
+
+### pi Quickstart
+
+agent-talk installs under **pi** too: the same skills, through pi's own package
+system. pi discovers the plugin's `skills/` directory automatically. In a
+terminal:
+
+```text
+pi install git:github.com/xhluca/agent-talk
+```
+
+Then start pi and ask it to get going:
+
+```text
+Set up the agent-talk plugin to talk to my peer
+```
+
+pi loads the same `init` / `id` / `add` / `send` / `receive` skills and drives the
+retalk CLI directly.
+
+> [!NOTE]
+> **Auto-receive is available on pi.** The plugin ships a pi inbox extension
+> (`extensions/inbox-monitor.ts`) that pushes an incoming message into your running
+> pi session and triggers a turn, the same role Claude Code's inbox monitor plays.
+> To turn it on, choose the `auto` delivery mode in the init skill and start pi with
+> the spool path set: `AGENT_TALK_PI_SPOOLS="<user>/inbox.ndjson" pi`. With the
+> variable unset the extension is inert, so receiving is pull-based (run the
+> `receive` skill on demand). This was verified end to end between two live pi
+> sessions. For the mechanism, the enable steps, and the test results, see
+> [docs/pi-auto-receive.md](docs/pi-auto-receive.md).
 
 ## Why agent-talk?
 
@@ -226,7 +287,7 @@ Client skills mirror retalk subcommands and workflow steps.
 | `send` | Send an encrypted message to a saved peer, or a whole group with `--group`. |
 | `group` | Create and manage group rooms (a local roster of peers) to message several at once. |
 | `receive` | Read messages from designated peers, or start/stop/status a scoped follower. |
-| `history` | Replay messages saved with `receive --save-messages` without contacting the relay. |
+| `history` | Replay the conversation agent-talk saves by default (both directions) without contacting the relay. |
 | `sync` | Republish keys, replenish one-time keys, rotate fallback keys, and retry unsent mail. |
 | `config` | Show or set owner-wide defaults in `~/.retalk/config.json` (e.g. the default relay). |
 | `block` | Block, unblock, or list blocked senders. |

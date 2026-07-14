@@ -2,8 +2,8 @@ name: CI
 
 # Deterministic, LLM-free CI. No model calls, no auth, no secrets.
 #   * validate      — static plugin/skill checks + the repo's LLM-free unit tests.
-#   * install-smoke — proves the plugin *installs* on codex and claude with no
-#                     authentication and no model calls (verified in a fresh,
+#   * install-smoke — proves the plugin *installs* on codex, claude, and pi with
+#                     no authentication and no model calls (verified in a fresh,
 #                     credential-free container before this job was written).
 
 on:
@@ -35,7 +35,7 @@ jobs:
         run: python3 -m unittest discover -s tests -v
 
   install-smoke:
-    name: install-smoke (codex + claude, no auth)
+    name: install-smoke (codex + claude + pi, no auth)
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -44,10 +44,13 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
+          # pi requires Node >= 22.19; "22" resolves to the latest 22.x.
           node-version: "22"
 
       - name: Install agent CLIs
-        run: npm i -g @anthropic-ai/claude-code @openai/codex
+        run: |
+          npm i -g @anthropic-ai/claude-code @openai/codex
+          npm i -g --ignore-scripts @earendil-works/pi-coding-agent
 
       # ---- codex ------------------------------------------------------------
       # Verified auth-free in a fresh container: `codex plugin marketplace add` +
@@ -93,4 +96,79 @@ jobs:
           fi
           count="$(find "$dir" -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l)"
           echo "claude skills dir: $dir  (SKILL.md count: $count)"
+          test "$count" -eq 15
+
+      # ---- pi ---------------------------------------------------------------
+      # Verified auth-free and offline in a fresh container: `pi install <path>`
+      # adds the checked-out repo (pi discovers its skills/ directory), and pi's
+      # RPC `get_commands` enumerates all 14 skills with no login and no model
+      # call. PI_OFFLINE disables startup network operations.
+      - name: pi — install the plugin from the checked-out repo
+        env:
+          PI_OFFLINE: "1"
+        run: pi install "$PWD"
+
+      - name: pi — assert all 14 skills are discovered
+        env:
+          PI_OFFLINE: "1"
+        run: |
+          set -euo pipefail
+          out="$(printf '%s\n' '{"id":"1","type":"get_commands"}' \
+            | pi --mode rpc --no-session --offline)"
+          count="$(printf '%s' "$out" | tr ',' '\n' | grep -c '"name":"skill:')"
+          echo "pi skills discovered: $count"
+          test "$count" -eq 15
+
+      # The inbox-monitor extension notifies on session_start when
+      # AGENT_TALK_PI_SPOOLS is set. That notify proves the extension loaded and
+      # attached its watcher. Auth-free and offline (no model call).
+      - name: pi — assert the inbox-monitor extension loads and attaches
+        env:
+          PI_OFFLINE: "1"
+        run: |
+          set -euo pipefail
+          spool="$(mktemp)"
+          out="$(printf '%s\n' '{"id":"1","type":"get_state"}' \
+            | AGENT_TALK_PI_SPOOLS="$spool" pi --mode rpc --no-session --offline)"
+          printf '%s' "$out" | grep -q 'agent-talk: watching' \
+            || { echo "pi: inbox-monitor extension did not attach" >&2; exit 1; }
+          echo "pi inbox-monitor extension: attached"
+
+  install-smoke-antigravity:
+    name: install-smoke (antigravity, no auth)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # The Antigravity CLI ships as a single native binary via an official
+      # installer script (no npm, no Node). Verified auth-free in a fresh
+      # container: the install script and `agy plugin install <dir>` both run
+      # with no Google login, so no secrets are needed for this job.
+      - name: Install the Antigravity CLI (agy)
+        run: |
+          set -euo pipefail
+          curl -fsSL https://antigravity.google/cli/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: antigravity — install the plugin from the checkout
+        run: |
+          set -euo pipefail
+          agy --version
+          # Antigravity reads the Claude Code plugin layout
+          # (.claude-plugin/plugin.json + top-level skills/) at the repo root.
+          agy plugin install "$PWD"
+          agy plugin list
+
+      - name: antigravity — assert all 14 skills landed in the cache
+        run: |
+          set -euo pipefail
+          dir="$HOME/.gemini/config/plugins/agent-talk/skills"
+          if [ ! -d "$dir" ]; then
+            echo "antigravity: no skills dir at $dir" >&2
+            find "$HOME/.gemini/config/plugins" -maxdepth 3 -type d >&2 || true
+            exit 1
+          fi
+          count="$(find "$dir" -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l)"
+          echo "antigravity skills dir: $dir  (SKILL.md count: $count)"
           test "$count" -eq 15

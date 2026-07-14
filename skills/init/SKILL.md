@@ -46,15 +46,21 @@ never collide. Below, `<user>` is the chosen user's **absolute directory**.
    resolving". The **fingerprint** stays user-facing (it's their address and
    verification pin). Go technical only if the user asks, or when they must
    act on it — then define the term in one clause.
-6. **Adapt to your host agent.** These skills are written for Claude Code but the
-   same plugin also runs under other coding agents (e.g. **codex**). Translate
-   the Claude-Code-specific bits as you go: **AskUserQuestion** → if your agent
-   has no such tool, just ask the user in plain text; **`/plugin …`** → your
-   agent's own install flow (codex: `codex plugin add`); the inbox **monitor**
-   and the `CLAUDE_SESSION_ID` session-map (step 4) are Claude-Code-only, so on
-   other agents skip them and run the **receive** skill on demand (proactive
-   auto-receive on non-Claude hosts is not wired up yet). The retalk commands
-   themselves are identical everywhere.
+6. **Save the conversation by default.** agent-talk keeps a local copy of every
+   message it sends and receives, so the whole conversation is replayable with the
+   **history** skill. Nothing for the user to turn on; it just works.
+7. **Adapt to your host agent.** These skills are written for Claude Code but the
+   same plugin also runs under other coding agents (e.g. **codex**,
+   **Antigravity** `agy`, **pi**). Translate the Claude-Code-specific bits as you
+   go: **AskUserQuestion** → if your agent has no such tool, just ask the user in
+   plain text; **`/plugin …`** → your agent's own install flow (codex:
+   `codex plugin add`; Antigravity: `agy plugin install <repo>`; pi: `pi install`);
+   the inbox **monitor** and the `CLAUDE_SESSION_ID` session-map (step 4) are
+   Claude-Code-only, so on other agents skip them; proactive auto-receive is not
+   wired up on codex or Antigravity, so there run the **receive** skill on demand.
+   On **pi** it is available: the plugin ships a pi inbox extension that surfaces
+   incoming messages into the live session; start it as described in step 4b instead
+   of step 4. The retalk commands themselves are identical everywhere.
 
 ## 1. Install retalk — and always upgrade to the latest
 retalk's `init`, invite, and relay behavior change often, and a stale client can
@@ -164,6 +170,10 @@ case "${root:+$PP_FILE}" in "$root"/*) p="${PP_FILE#"$root"/}"; grep -qxF "$p" "
       `RETALK_PASSPHRASE=<secret>` on each command (or store it the same way).
     - **No passphrase** — keys guarded by file permissions only, no encryption at
       rest; create with `--no-passphrase`. Lowest friction, least protection.
+      Note: since agent-talk saves the conversation by default, on a
+      `--no-passphrase` identity the saved message bodies get the same weak
+      at-rest protection (file permissions only); a passphrase-encrypted identity
+      (the recommended default) seals them, so this is only a concern here.
 - Create the identity (encrypted with the chosen passphrase, or `--no-passphrase`):
 ```
 # Claude-managed / custom passphrase:
@@ -197,8 +207,11 @@ RETALK_PASSPHRASE="$(cat "$PP_FILE")" retalk sync --dir "<user>/identity"  # dro
   > agent — in **Claude Code**: `/plugin marketplace add xhluca/agent-talk` then
   > `/plugin install agent-talk@agent-talk` then `/reload-plugins`; in **codex**:
   > `codex plugin marketplace add xhluca/agent-talk` then
-  > `codex plugin add agent-talk@agent-talk`. Then paste this whole message into
-  > your agent session and it will take it from here.
+  > `codex plugin add agent-talk@agent-talk`; in **Antigravity**:
+  > `git clone https://github.com/xhluca/agent-talk` then
+  > `agy plugin install ./agent-talk`; in **pi**:
+  > `pi install git:github.com/xhluca/agent-talk`. Then paste this whole message
+  > into your agent session and it will take it from here.
   >
   > **To the receiving agent:** please set up agent-talk comms for your user
   > (init skill). Use the relay `<relay>`. Add me as a peer and verify me — my
@@ -290,7 +303,9 @@ echo "<peer-name-or-fingerprint>" > "<user>/receive-from"   # the peer from (5)
       reader for the receive-from source and front its spool with a persistent
       **Monitor** (exact blocks: the **receive** skill, *Background follow* +
       *Proactive auto-wake via Monitor*). New messages then wake the agent and
-      surface live — nothing for the user to poll or ask for.
+      surface live — nothing for the user to poll or ask for. (On **pi**, the
+      follower still runs, but the push comes from the pi inbox extension — see
+      step 4b — not a Monitor.)
     - **Manual** — no follower; the user asks to check mail and you run the
       **receive** skill on demand.
   Record the choice so every later skill honors it:
@@ -312,12 +327,31 @@ done
 ## 4. Register this session's user (enables real-time push) — Claude Code only
 This wires the chosen user to Claude Code's inbox **monitor** via a session map.
 It relies on `CLAUDE_SESSION_ID` and the monitor, so it applies **only on Claude
-Code** — skip this step on other agents (e.g. codex), where you check mail with
-the **receive** skill on demand.
+Code** — skip this step on other agents (e.g. codex, Antigravity, pi). On codex
+and Antigravity, check mail with the **receive** skill on demand; on pi, use step
+4b instead.
 ```
 mkdir -p "$HOME/.agent-talk/by-session"
 echo "<user>" > "$HOME/.agent-talk/by-session/${CLAUDE_SESSION_ID}"
 ```
+
+## 4b. Enable auto-receive on pi (pi only)
+On a **pi** host the plugin ships an inbox extension that surfaces incoming
+messages into the live session (the pi equivalent of Claude Code's monitor).
+It watches the spool paths named in the `AGENT_TALK_PI_SPOOLS` environment
+variable (colon-separated absolute `inbox.ndjson` paths) and injects each new
+message, so it must be set **before pi starts**. You cannot change a running
+process's environment, so tell the user to relaunch pi with it set. For this
+session's user:
+```
+# add this user's spool to any already set, then start pi:
+AGENT_TALK_PI_SPOOLS="$(printf '%s%s' "${AGENT_TALK_PI_SPOOLS:+$AGENT_TALK_PI_SPOOLS:}" "<user>/inbox.ndjson")" pi
+```
+The `receive --follow` reader still writes the spool (delivery mode `auto`,
+step 7); the extension is what pushes those spool lines into the session. With
+no `AGENT_TALK_PI_SPOOLS` set the extension is inert, so nothing changes for a
+user who has not opted in. If relaunching now is not convenient, receiving stays
+pull-based (**receive** skill) until the next launch.
 
 ## 5. The relay can change after init
 The relay is saved as this user's **default** (in the retalk store and in

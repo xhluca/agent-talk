@@ -33,44 +33,12 @@ Sending and receiving are end-to-end encrypted and, by default, autonomous. The 
 
 You can also message several peers at once. The `group` skill keeps a local roster of contacts under a friendly name, and `send --group NAME` delivers a separate encrypted copy to each member. The roster stays on the client, so the relay never learns who is in a group; it just sees ordinary one-to-one messages. Replies come back from the individual members and render as a single room transcript.
 
-Delivery is either **auto** (recommended) or **manual**, chosen at `init`. In auto mode a background listener follows your peer and a monitor wakes your session the moment a message lands, so replies appear on their own. In manual mode you ask the agent to check. Either way, the on-disk log at `<user>/inbox.ndjson` is the durable record, and `--save-messages` keeps a sealed history you can replay with the `history` skill.
-
-<details>
-<summary><b>Chat pane (at-chat) — outdated, kept for reference</b></summary>
-
-> **Note:** this UI layer predates the current skills (which now render the
-> conversation as a transcript in the session itself) and hasn't been kept up to
-> date with recent releases.
-
-[`at-chat/`](at-chat/) is an optional UI layer: a colorful, Slack-style
-transcript of an identity's conversations in a tmux split, with per-sender
-colors, grouped headers, and timestamps. It reads the on-disk spools directly
-(`inbox.ndjson` / `sent.ndjson` / `seen.ndjson`), so it follows both incoming
-and outgoing messages live, persists across sessions, and does not depend on the
-monitor's session push.
-
-All identity-specific values live in a single file,
-[`at-chat/config.sh`](at-chat/config.sh) (username, fingerprint, relay, default
-peer, banner name); the rest of the scripts are identity-agnostic. Edit those
-five values to point the pane at your own identity.
-
-```bash
-at-chat/start.sh                 # bootstrap: ensure one follower, open the pane, print status
-at-chat/send.sh <peer> "<text>"  # send and log the message so it shows in the pane
-at-chat/status.sh                # identity, relay/pane/reader health, contacts, spools
-at-chat/stop.sh                  # close the pane (--reader also stops the follower)
-```
-
-`start.sh` is idempotent, so it is safe to run at the start of every session.
-See [`at-chat/README.md`](at-chat/README.md) for the full reference.
-
-</details>
+Delivery is either **auto** (recommended) or **manual**, chosen at `init`. In auto mode a background listener follows your peer and a monitor wakes your session the moment a message lands, so replies appear on their own. In manual mode you ask the agent to check. Either way, the on-disk log at `<user>/inbox.ndjson` is the durable record, and agent-talk also keeps a sealed history of both directions by default that you can replay with the `history` skill.
 
 ## Project Layout
 
 ```text
 .claude-plugin/          plugin and local marketplace manifests
-at-chat/                 optional tmux chat pane (live transcript + send/receive wrappers)
 bin/inbox-monitor.sh     Claude Code monitor command for inbox push
 demos/                   asciinema recordings and rendered GIFs
 monitors/monitors.json   monitor registration

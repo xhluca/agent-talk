@@ -12,9 +12,10 @@ so packaging/manifest regressions are caught on every push/PR.
 Checks:
   * Every skills/*/SKILL.md: YAML frontmatter delimited by `---`, parses, has
     `name` and `description`, and `name` == the directory name.
-  * .claude-plugin/plugin.json and .codex-plugin/plugin.json: valid JSON,
-    required fields (name, version, description) present, versions match each
-    other, and the codex `skills` field points at an existing directory.
+  * .claude-plugin/plugin.json, .codex-plugin/plugin.json, and the root
+    package.json (pi's manifest): valid JSON, required fields (name, version,
+    description) present, versions match, the codex `skills` field points at an
+    existing directory, and the pi `pi.skills` list points at existing directories.
   * .claude-plugin/marketplace.json: valid JSON, lists the `agent-talk` plugin.
   * README.md and docs/README.md: balanced ``` fences and <details>/</details>.
 """
@@ -120,13 +121,18 @@ def load_json(rel):
 def check_manifests():
     claude = load_json(".claude-plugin/plugin.json")
     codex = load_json(".codex-plugin/plugin.json")
+    # pi's manifest is the root package.json `pi` key (pi's own convention).
+    pi = load_json("package.json")
 
     required = ("name", "version", "description")
-    for label, manifest in (("claude", claude), ("codex", codex)):
+    for label, manifest in (("claude", claude), ("codex", codex), ("pi", pi)):
         if manifest is None:
             continue
-        src = (".claude-plugin/plugin.json" if label == "claude"
-               else ".codex-plugin/plugin.json")
+        src = {
+            "claude": ".claude-plugin/plugin.json",
+            "codex": ".codex-plugin/plugin.json",
+            "pi": "package.json",
+        }[label]
         for field in required:
             if field not in manifest or manifest.get(field) in (None, ""):
                 err(f"{src}: missing/empty required field '{field}'")
@@ -139,6 +145,14 @@ def check_manifests():
             err(
                 "version mismatch: .claude-plugin/plugin.json version "
                 f"'{cv}' != .codex-plugin/plugin.json version '{xv}'"
+            )
+    if claude is not None and pi is not None:
+        cv = claude.get("version")
+        pv = pi.get("version")
+        if cv is not None and pv is not None and cv != pv:
+            err(
+                "version mismatch: .claude-plugin/plugin.json version "
+                f"'{cv}' != package.json version '{pv}'"
             )
 
     # codex `skills` must point at an existing directory
@@ -153,6 +167,38 @@ def check_manifests():
                     ".codex-plugin/plugin.json: 'skills' points at "
                     f"'{skills_ref}' which is not an existing directory"
                 )
+
+    # pi `pi.skills` must be a non-empty list of existing directories
+    if pi is not None:
+        pi_block = pi.get("pi")
+        if not isinstance(pi_block, dict):
+            err("package.json: missing 'pi' manifest object")
+        else:
+            skills_refs = pi_block.get("skills")
+            if not isinstance(skills_refs, list) or not skills_refs:
+                err("package.json: 'pi.skills' must be a non-empty list")
+            else:
+                for ref in skills_refs:
+                    p = os.path.normpath(os.path.join(ROOT, ref))
+                    if not os.path.isdir(p):
+                        err(
+                            "package.json: 'pi.skills' entry "
+                            f"'{ref}' is not an existing directory"
+                        )
+            # `pi.extensions` is optional; when present it must be a non-empty
+            # list of existing directories (the pi inbox-monitor lives here).
+            ext_refs = pi_block.get("extensions")
+            if ext_refs is not None:
+                if not isinstance(ext_refs, list) or not ext_refs:
+                    err("package.json: 'pi.extensions' must be a non-empty list")
+                else:
+                    for ref in ext_refs:
+                        p = os.path.normpath(os.path.join(ROOT, ref))
+                        if not os.path.isdir(p):
+                            err(
+                                "package.json: 'pi.extensions' entry "
+                                f"'{ref}' is not an existing directory"
+                            )
 
 
 def check_marketplace():
@@ -175,11 +221,14 @@ def check_marketplace():
 # Markdown balance (nice-to-have)
 # --------------------------------------------------------------------------- #
 def check_markdown_balance():
-    for rel in ("README.md", "docs/README.md"):
+    optional = ("docs/README.md", "docs/codex-auto-receive.md",
+                "docs/antigravity-auto-receive.md")
+    for rel in ("README.md", "docs/README.md", "docs/codex-auto-receive.md",
+                "docs/antigravity-auto-receive.md"):
         path = os.path.join(ROOT, rel)
         if not os.path.isfile(path):
-            # docs/README.md is optional; only flag a missing top-level README.
-            if rel == "README.md":
+            # These docs are optional; only flag a missing top-level README.
+            if rel not in optional:
                 err(f"{rel}: file is missing")
             continue
         with open(path, encoding="utf-8") as fh:

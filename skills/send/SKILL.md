@@ -6,15 +6,16 @@ description: Send an end-to-end-encrypted message to a peer, autonomously. Use w
 # send — message a peer (seamless, autonomous)
 
 ```
-retalk send --peer <name-or-fingerprint> "your message" --dir "<user>/identity"
+RETALK_SAVE_MESSAGE=1 retalk send --peer <name-or-fingerprint> "your message" --dir "<user>/identity"
 # -> {"id","to"} on stdout
-retalk send --peer <name-or-fingerprint> "msg" --save-messages --dir "<user>/identity"  # also keep your side for history
-retalk send --group <group-name> "your message" --dir "<user>/identity"                 # message a whole room
+RETALK_SAVE_MESSAGE=1 retalk send --group <group-name> "your message" --dir "<user>/identity"   # message a whole room
 # -> {"id","group","group_id","sent","failed"} on stdout
 ```
 
-Add `--save-messages` (or set `RETALK_SAVE_MESSAGE=1` for every command) to keep a
-sealed copy of what you send, so **history** shows both sides of the conversation.
+agent-talk sets `RETALK_SAVE_MESSAGE=1` on every `send`, so a sealed copy of what
+you send is kept and **history** shows both sides of the conversation. Use the env
+var (not a `--save`/`--save-messages` flag) so it works across retalk versions. If
+the identity is encrypted, keep the `RETALK_PASSPHRASE=<secret>` prefix as well.
 
 ## Show the conversation — always, and make it beautiful
 After every send (and receive), render the exchange in the chat as a clean
