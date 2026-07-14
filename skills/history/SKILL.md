@@ -6,9 +6,9 @@ description: Replay this session's locally-saved conversation log — the at-res
 # history — replay the saved conversation
 
 ```
-retalk history --json --dir "<user>/identity"                # whole conversation, oldest first
-retalk history --peer <peer> --json --dir "<user>/identity"  # one peer's thread (both directions)
-retalk history --group <name> --json --dir "<user>/identity" # one room's thread (all senders)
+retalk history --dir "<user>/identity"                # whole conversation, oldest first (NDJSON)
+retalk history --peer <peer> --dir "<user>/identity"  # one peer's thread (both directions)
+retalk history --group <name> --dir "<user>/identity" # one room's thread (all senders)
 ```
 
 Prints the messages this identity saved, as NDJSON

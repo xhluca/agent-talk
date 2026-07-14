@@ -102,14 +102,14 @@ jobs:
       # ---- pi ---------------------------------------------------------------
       # Verified auth-free and offline in a fresh container: `pi install <path>`
       # adds the checked-out repo (pi discovers its skills/ directory), and pi's
-      # RPC `get_commands` enumerates all 14 skills with no login and no model
+      # RPC `get_commands` enumerates all 15 skills with no login and no model
       # call. PI_OFFLINE disables startup network operations.
       - name: pi — install the plugin from the checked-out repo
         env:
           PI_OFFLINE: "1"
         run: pi install "$PWD"
 
-      - name: pi — assert all 14 skills are discovered
+      - name: pi — assert all 15 skills are discovered
         env:
           PI_OFFLINE: "1"
         run: |
@@ -139,7 +139,7 @@ jobs:
       # Verified auth-free and offline in a fresh container: opencode discovers
       # SKILL.md files from fixed skill directories (no plugin manifest), so
       # symlinking this repo's skills/ into ~/.config/opencode/skills makes all
-      # 14 skills discoverable. `opencode debug skill` enumerates them as JSON
+      # 15 skills discoverable. `opencode debug skill` enumerates them as JSON
       # with no login and no model call.
       - name: opencode — install skills into the global skills directory
         run: |
@@ -148,16 +148,16 @@ jobs:
           mkdir -p "$HOME/.config/opencode"
           ln -s "$PWD/skills" "$HOME/.config/opencode/skills"
 
-      - name: opencode — assert all 14 skills are discovered
+      - name: opencode — assert all 15 skills are discovered
         run: |
           set -euo pipefail
           # Run inside a throwaway git repo so opencode resolves a worktree root.
           work="$(mktemp -d)"
           git -C "$work" init -q
           opencode debug skill > "$work/skills.json" 2>/dev/null
-          count="$(python3 -c 'import json,sys; want={"add","block","config","contacts","history","id","import","init","receive","relay","send","share","sync","verify"}; data=json.load(open(sys.argv[1])); print(len(want & {s.get("name") for s in data}))' "$work/skills.json")"
+          count="$(python3 -c 'import json,sys; want={"add","block","config","contacts","group","history","id","import","init","receive","relay","send","share","sync","verify"}; data=json.load(open(sys.argv[1])); print(len(want & {s.get("name") for s in data}))' "$work/skills.json")"
           echo "opencode skills discovered: $count"
-          test "$count" -eq 14
+          test "$count" -eq 15
 
   install-smoke-antigravity:
     name: install-smoke (antigravity, no auth)
@@ -185,7 +185,7 @@ jobs:
           agy plugin install "$PWD"
           agy plugin list
 
-      - name: antigravity — assert all 14 skills landed in the cache
+      - name: antigravity — assert all 15 skills landed in the cache
         run: |
           set -euo pipefail
           dir="$HOME/.gemini/config/plugins/agent-talk/skills"
