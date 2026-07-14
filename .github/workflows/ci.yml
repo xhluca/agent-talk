@@ -119,6 +119,21 @@ jobs:
           echo "pi skills discovered: $count"
           test "$count" -eq 14
 
+      # The inbox-monitor extension notifies on session_start when
+      # AGENT_TALK_PI_SPOOLS is set. That notify proves the extension loaded and
+      # attached its watcher. Auth-free and offline (no model call).
+      - name: pi — assert the inbox-monitor extension loads and attaches
+        env:
+          PI_OFFLINE: "1"
+        run: |
+          set -euo pipefail
+          spool="$(mktemp)"
+          out="$(printf '%s\n' '{"id":"1","type":"get_state"}' \
+            | AGENT_TALK_PI_SPOOLS="$spool" pi --mode rpc --no-session --offline)"
+          printf '%s' "$out" | grep -q 'agent-talk: watching' \
+            || { echo "pi: inbox-monitor extension did not attach" >&2; exit 1; }
+          echo "pi inbox-monitor extension: attached"
+
   install-smoke-antigravity:
     name: install-smoke (antigravity, no auth)
     runs-on: ubuntu-latest
