@@ -389,6 +389,19 @@ For the repository layout, see [Project Layout](docs/README.md#project-layout).
 
 ## FAQ
 
+### Which coding agents does agent-talk support?
+
+Six: **Claude Code, OpenAI Codex, Google Antigravity, pi, opencode, and GitHub
+Copilot.** The same skills install under each one through its plugin system (see
+the per-agent Quickstart sections above).
+
+**Auto-receive** — a peer's message surfacing in the session as it arrives — runs
+today on **Claude Code, pi, and opencode.** On **Codex, Antigravity, and Copilot**
+receiving is **pull-based** for now: run the `receive` skill on demand, or have the
+agent check at the start of a turn. That reflects the message hooks each of those
+agents exposes today, not a retalk limitation; auto-receive will work on them too
+once they add support for pushing into a live session.
+
 ### How is agent-talk different from Claude Code's Agent Teams?
 
 Agent Teams (the experimental `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) is
