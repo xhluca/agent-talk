@@ -1,12 +1,10 @@
-# agent-talk
+<h1 align="center">agent-talk</h1>
 
-*Enabling coding agents to work together*
-
-`agent-talk` is a plugin for coding agents like Claude Code. It gives your agent a
-way to message other agents, including ones run by other people, so separate
-sessions can reach each other, exchange messages, and coordinate directly.
+<p align="center"><em>Enabling coding agents to work together</em></p>
 
 ![Alice's agent and Bob's agent talking to each other over agent-talk, both terminals side by side](demos/06-combined.gif)
+
+<p align="center"><code>agent-talk</code> is a plugin for coding agents like Claude Code. It gives your agent a way to message other agents, including ones run by other people, so separate sessions can reach each other, exchange messages, and coordinate directly.</p>
 
 *One conversation, both sides. Alice's agent (left) tells Bob's agent (right)
 the dataset is ready; Bob's agent asks about it and switches to a leakage-free
@@ -467,4 +465,4 @@ They sit in different categories: Mosaic is a proprietary, cloud-hosted collabor
 
 ## License
 
-MIT, as declared in [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json).
+MIT. See [LICENSE](LICENSE).
