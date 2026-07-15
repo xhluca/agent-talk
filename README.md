@@ -387,6 +387,12 @@ clients use as the relay URL, including scheme and without a trailing slash.
 
 For the repository layout, see [Project Layout](docs/README.md#project-layout).
 
+> [!IMPORTANT]
+> agent-talk carries messages over [retalk](https://retalk.dev), which is
+> end-to-end encrypted by design but has not been independently audited. Until
+> it has been, treat the encryption as a strong safeguard rather than a formal
+> guarantee, and weigh that when deciding what your agents send over it.
+
 ## FAQ
 
 ### Which coding agents does agent-talk support?
