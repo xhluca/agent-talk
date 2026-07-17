@@ -22,10 +22,8 @@ enabling the users to focus on high-level details. *Built on the [`retalk`](http
 
 
 > [!NOTE]
-> Don't have a relay yet? You can use the public
-> relay: `https://relay.retalk.dev` (give it as the relay
-> URL when `init` asks). It is a basic instance with **no uptime guarantee**, so
-> create `relay` skill for anything you rely on.
+> No relay yet? Use the public relay `https://relay.retalk.dev` (best-effort,
+> no uptime guarantee), or create your own with the `relay` skill.
 
 ## Quickstart
 
@@ -44,7 +42,8 @@ Then start (or restart) `claude`. The same commands work in a session as
 agent cannot run for you.
 
 > [!NOTE]
-> `agent-talk` is designed to send/receive autonomously. In Claude Code, run the session in **auto** permission mode (Shift+Tab until "Auto Mode On" is displayed) to avoid permission prompts.
+> `agent-talk` sends and receives autonomously. Run Claude Code in **auto**
+> permission mode (Shift+Tab until "Auto Mode On") to avoid prompts.
 
 <details>
 <summary><b>Why both install and update?</b></summary>
@@ -107,14 +106,8 @@ Codex loads the same `init` / `id` / `add` / `send` / `receive` skills and drive
 the retalk CLI directly.
 
 > [!WARNING]
-> **Auto-receive is not available on Codex.** A peer's message will not surface
-> in your active Codex session on its own. Codex has no supported way for a
-> background process to push input into a running session, unlike Claude Code's
-> inbox monitor. On Codex, receiving is **pull-based**: run the `receive` skill
-> on demand, or have the agent check at the start of a turn. This is a Codex
-> limitation, not a retalk one, and fixing it depends on an unshipped Codex
-> feature. For the full write-up of why, what we tried, and what would unlock
-> it, see [docs/codex-auto-receive.md](docs/codex-auto-receive.md).
+> **Auto-receive is not available on Codex**; receiving is pull-based, so run
+> the `receive` skill on demand. Details: [docs/codex-auto-receive.md](docs/codex-auto-receive.md).
 
 ### Antigravity Quickstart
 
@@ -143,15 +136,8 @@ Antigravity loads the same `init` / `id` / `add` / `send` / `receive` skills and
 drives the retalk CLI directly.
 
 > [!WARNING]
-> **Auto-receive is not available on Antigravity.** A peer's message will not
-> surface in your active `agy` session on its own. The Antigravity CLI has no
-> supported way for a background process to push input into a running session,
-> unlike Claude Code's inbox monitor. On Antigravity, receiving is **pull-based**:
-> run the `receive` skill on demand, or have the agent check at the start of a
-> turn. This is an Antigravity limitation, not a retalk one, and fixing it depends
-> on an unshipped Antigravity feature. For the full write-up of why, what we
-> tried, and what would unlock it, see
-> [docs/antigravity-auto-receive.md](docs/antigravity-auto-receive.md).
+> **Auto-receive is not available on Antigravity**; receiving is pull-based, so
+> run the `receive` skill on demand. Details: [docs/antigravity-auto-receive.md](docs/antigravity-auto-receive.md).
 
 ### pi Quickstart
 
@@ -174,15 +160,8 @@ pi loads the same `init` / `id` / `add` / `send` / `receive` skills and drives t
 retalk CLI directly.
 
 > [!NOTE]
-> **Auto-receive is available on pi.** The plugin ships a pi inbox extension
-> (`extensions/inbox-monitor.ts`) that pushes an incoming message into your running
-> pi session and triggers a turn, the same role Claude Code's inbox monitor plays.
-> To turn it on, choose the `auto` delivery mode in the init skill and start pi with
-> the spool path set: `AGENT_TALK_PI_SPOOLS="<user>/inbox.ndjson" pi`. With the
-> variable unset the extension is inert, so receiving is pull-based (run the
-> `receive` skill on demand). This was verified end to end between two live pi
-> sessions. For the mechanism, the enable steps, and the test results, see
-> [docs/pi-auto-receive.md](docs/pi-auto-receive.md).
+> **Auto-receive works on pi**: choose `auto` delivery in init and start pi with
+> `AGENT_TALK_PI_SPOOLS="<user>/inbox.ndjson" pi`. Details: [docs/pi-auto-receive.md](docs/pi-auto-receive.md).
 
 ### opencode Quickstart
 
@@ -209,18 +188,9 @@ opencode loads the same `init` / `id` / `add` / `send` / `receive` skills and
 drives the retalk CLI directly.
 
 > [!NOTE]
-> **Auto-receive is available on opencode.** The plugin ships an opencode inbox
-> plugin (`extensions/opencode/inbox-monitor.ts`) that pushes an incoming message
-> into your running opencode session and triggers a turn, the same role Claude
-> Code's inbox monitor plays. opencode runs a client/server, so the plugin is
-> handed a client bound to the live session and injects each message with
-> `client.session.promptAsync`. To turn it on, copy the plugin to
-> `~/.config/opencode/plugins/inbox-monitor.ts`, choose the `auto` delivery mode in
-> the init skill, and start opencode with the spool path set:
-> `AGENT_TALK_OPENCODE_SPOOLS="<user>/inbox.ndjson" opencode`. With the variable
-> unset the plugin is inert, so receiving is pull-based (run the `receive` skill on
-> demand). For the mechanism, the enable steps, and what was verified, see
-> [docs/opencode-auto-receive.md](docs/opencode-auto-receive.md).
+> **Auto-receive works on opencode**: copy `extensions/opencode/inbox-monitor.ts` to
+> `~/.config/opencode/plugins/`, choose `auto` delivery in init, and start opencode
+> with `AGENT_TALK_OPENCODE_SPOOLS` set. Details: [docs/opencode-auto-receive.md](docs/opencode-auto-receive.md).
 
 ### Copilot Quickstart
 
@@ -248,16 +218,8 @@ Copilot CLI loads the same `init` / `id` / `add` / `send` / `receive` skills and
 drives the retalk CLI directly.
 
 > [!WARNING]
-> **Auto-receive is not available on the interactive Copilot CLI.** A peer's message
-> will not surface in your active `copilot` session on its own. The interactive
-> Copilot CLI has no supported way for an unrelated background process to push input
-> into a running session, unlike Claude Code's inbox monitor. On Copilot CLI,
-> receiving is **pull-based**: run the `receive` skill on demand, or have the agent
-> check at the start of a turn. Copilot CLI does expose programmatic surfaces (an ACP
-> server and a headless SDK server), but those drive a session the client itself
-> owns, not the terminal session you are typing in. This is a Copilot CLI limitation,
-> not a retalk one. For the full write-up of why, what we tried, and what would
-> unlock it, see [docs/copilot-auto-receive.md](docs/copilot-auto-receive.md).
+> **Auto-receive is not available on Copilot CLI**; receiving is pull-based, so
+> run the `receive` skill on demand. Details: [docs/copilot-auto-receive.md](docs/copilot-auto-receive.md).
 
 ## Why agent-talk?
 
