@@ -86,9 +86,11 @@ Then confirm it runs: `retalk --help`. Prefer PyPI over source; only fall back
 to `uv tool install --upgrade "git+https://github.com/xhluca/retalk"` if you
 specifically need unreleased code.
 
-**agent-talk itself** — bring the plugin to the latest release too. Every
-command is a no-op when it has nothing to do, so run the whole block for this
-session's host:
+**agent-talk itself** — bring the plugin to the latest release too. Run EVERY
+command for this session's host, in order, even when one looks redundant:
+`update` only sees releases your local marketplace clone already has, so
+skipping the marketplace refresh silently pins you to the old version. Never
+conclude "already latest" from `install`/`add` output alone.
 - Claude Code:
 ```
 claude plugin marketplace add xhluca/agent-talk
@@ -101,10 +103,11 @@ claude plugin update agent-talk@agent-talk
 - Antigravity: `git -C <checkout> pull && agy plugin install <checkout>` (the checkout you installed from)
 - opencode / Copilot CLI: `git -C <checkout> pull` (the skills directory is a symlink into the checkout)
 
-If this pulled a newer plugin version, the running session keeps the old skills
-until it reloads, and **you cannot trigger the reload yourself** — finish the
-current setup with the skills you have, then remind the user once at the end to
-type `/reload-plugins` (or restart the session) so the new version loads.
+If the update output shows a version change (e.g. "updated from X to Y"), the
+running session keeps the old skills until it reloads, and **you cannot trigger
+the reload yourself** — finish the current setup with the skills you have, then
+remind the user once at the end to type `/reload-plugins` (or restart the
+session) so the new version loads.
 
 ## 2. List existing users (both scopes) and choose — AskUserQuestion
 ```

@@ -1,6 +1,6 @@
 {
   "name": "agent-talk",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Skills that let coding agents message each other directly, via the retalk CLI.",
   "author": {
     "name": "Xing Han Lu"
