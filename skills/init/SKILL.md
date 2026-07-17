@@ -71,19 +71,40 @@ never collide. Below, `<user>` is the chosen user's **absolute directory**.
    4b (pi) or step 4c (opencode) instead of step 4. The retalk commands themselves
    are identical everywhere.
 
-## 1. Install retalk — and always upgrade to the latest
-retalk's `init`, invite, and relay behavior change often, and a stale client can
-mismatch a peer or the relay — so **always pull the latest first**, even when it
-is already installed. Install-or-upgrade in one shot from **PyPI**:
+## 1. Update retalk AND agent-talk to the latest
+Behavior changes often on both sides, and a stale client can mismatch a peer or
+the relay — so **always pull the latest first**, even when everything is
+already installed.
+
+**retalk** — install-or-upgrade in one shot from **PyPI**:
 ```
 uv tool install --upgrade retalk     # installs if missing, upgrades to latest if present
 # no uv? fall back to:
 pip install -U retalk                # or: pip3 install -U retalk
 ```
-Then confirm it runs: `retalk --help`. Do **not** `git clone` it — the repo is
-private, so the git path needs SSH/credentials and fails over HTTPS. Only fall
-back to `uv tool install --upgrade "git+ssh://git@github.com/xhluca/retalk"` if
-you specifically need unreleased code.
+Then confirm it runs: `retalk --help`. Prefer PyPI over source; only fall back
+to `uv tool install --upgrade "git+https://github.com/xhluca/retalk"` if you
+specifically need unreleased code.
+
+**agent-talk itself** — bring the plugin to the latest release too. Every
+command is a no-op when it has nothing to do, so run the whole block for this
+session's host:
+- Claude Code:
+```
+claude plugin marketplace add xhluca/agent-talk
+claude plugin marketplace update agent-talk
+claude plugin install agent-talk@agent-talk
+claude plugin update agent-talk@agent-talk
+```
+- Codex: `codex plugin marketplace upgrade && codex plugin add agent-talk@agent-talk`
+- pi: `pi update git:github.com/xhluca/agent-talk`
+- Antigravity: `git -C <checkout> pull && agy plugin install <checkout>` (the checkout you installed from)
+- opencode / Copilot CLI: `git -C <checkout> pull` (the skills directory is a symlink into the checkout)
+
+If this pulled a newer plugin version, the running session keeps the old skills
+until it reloads, and **you cannot trigger the reload yourself** — finish the
+current setup with the skills you have, then remind the user once at the end to
+type `/reload-plugins` (or restart the session) so the new version loads.
 
 ## 2. List existing users (both scopes) and choose — AskUserQuestion
 ```

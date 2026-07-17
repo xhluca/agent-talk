@@ -29,51 +29,30 @@ enabling the users to focus on high-level details. *Built on the [`retalk`](http
 
 ## Quickstart
 
-Open a claude session first:
+In a terminal (safe to re-run; installs or updates to the latest):
 
-```text
-/plugin marketplace add xhluca/agent-talk
+```bash
+claude plugin marketplace add xhluca/agent-talk
+claude plugin marketplace update agent-talk
+claude plugin install agent-talk@agent-talk
+claude plugin update agent-talk@agent-talk
 ```
 
-Once the marketplace is succesfully added, run:
-
-```text
-/plugin install agent-talk@agent-talk
-```
-
-Finally reload the plugins to start using it:
-
-```text
-/reload-plugins
-```
+Then start (or restart) `claude`. The same commands work in a session as
+`/plugin …`. If it was installed or updated from a running session, type
+**`/reload-plugins`** to load the new skills — that reload is the one step your
+agent cannot run for you.
 
 > [!NOTE]
 > `agent-talk` is designed to send/receive autonomously. In Claude Code, run the session in **auto** permission mode (Shift+Tab until "Auto Mode On" is displayed) to avoid permission prompts.
 
 <details>
-<summary><b>Already have agent-talk? Instructions to update the marketplace</b></summary>
+<summary><b>Why both install and update?</b></summary>
 
-`/plugin install` does **not** upgrade an existing install (it reports "already
-installed"), and even a fresh install pulls from your local **marketplace
-clone**, which may be stale — third-party marketplaces do **not** auto-refresh
-by default.
-
-**Recommended (one-time): enable auto-update for this marketplace.**
-`/plugin` → **Marketplaces** tab → `agent-talk` → **Enable auto-update** (or set
-`"autoUpdate": true` on the marketplace entry in your settings). Claude Code
-then refreshes the marketplace and keeps the installed plugin at the latest
-release on its own.
-
-**Manual:** refresh the marketplace, then update the plugin:
-
-```text
-/plugin marketplace update agent-talk
-/plugin update agent-talk@agent-talk
-```
-
-(the same works in a terminal via `claude plugin …`; add `--scope project` for a
-project-scope install). Restart the session or `/reload-plugins` to apply —
-sessions keep using the old skills until you do.
+`install` does not upgrade an existing install, and the local marketplace clone
+does not auto-refresh — each command no-ops when there is nothing to do, so the
+four lines cover fresh installs and stale ones. Tip: enable auto-update for the
+marketplace (`/plugin` → Marketplaces → agent-talk) to skip this in the future.
 
 </details>
 
@@ -112,8 +91,9 @@ The `init` skill will:
 agent-talk installs under **Codex** too — the same skills, through Codex's own
 plugin system. In a terminal:
 
-```text
+```bash
 codex plugin marketplace add xhluca/agent-talk
+codex plugin marketplace upgrade                # re-run add + upgrade any time to update
 codex plugin add agent-talk@agent-talk
 ```
 
@@ -143,15 +123,16 @@ through Antigravity's own plugin system. Antigravity reads the Claude Code plugi
 layout, so it installs the plugin straight from a checkout of this repository. In
 a terminal:
 
-```text
+```bash
 curl -fsSL https://antigravity.google/cli/install.sh | bash   # installs the `agy` binary
-git clone https://github.com/xhluca/agent-talk
+git clone https://github.com/xhluca/agent-talk || git -C agent-talk pull
 agy plugin install ./agent-talk
 ```
 
 `agy plugin install` reads `.claude-plugin/plugin.json` and the `skills/`
 directory at the repository root, then copies the plugin into
 `~/.gemini/config/plugins/agent-talk/`. Confirm it landed with `agy plugin list`.
+Re-run the block any time to update (pull, then reinstall).
 Then start Antigravity and ask it to get going:
 
 ```text
@@ -178,8 +159,9 @@ agent-talk installs under **pi** too: the same skills, through pi's own package
 system. pi discovers the plugin's `skills/` directory automatically. In a
 terminal:
 
-```text
+```bash
 pi install git:github.com/xhluca/agent-talk
+pi update git:github.com/xhluca/agent-talk     # safe to re-run; keeps it at the latest
 ```
 
 Then start pi and ask it to get going:
@@ -209,14 +191,15 @@ Agent-Skills-standard `SKILL.md` files directly, discovering them from fixed
 directories rather than from a plugin manifest, so you install by pointing one of
 those directories at this repository's `skills/`. In a terminal:
 
-```text
+```bash
 npm i -g opencode-ai                                    # or: curl -fsSL https://opencode.ai/install | bash
-git clone https://github.com/xhluca/agent-talk
-ln -s "$PWD/agent-talk/skills" ~/.config/opencode/skills   # global; or a project's .opencode/skills
+git clone https://github.com/xhluca/agent-talk || git -C agent-talk pull
+ln -sfn "$PWD/agent-talk/skills" ~/.config/opencode/skills   # global; or a project's .opencode/skills
 ```
 
 opencode discovers each `skills/<name>/SKILL.md` on startup. Confirm they landed
-with `opencode debug skill`. Then start opencode and ask it to get going:
+with `opencode debug skill`. Re-run the block any time to update (the symlink
+picks up the pulled checkout). Then start opencode and ask it to get going:
 
 ```text
 Set up the agent-talk plugin to talk to my peer
@@ -247,14 +230,15 @@ files directly, discovering them from fixed directories rather than from a plugi
 manifest, so you install by pointing one of those directories at this repository's
 `skills/`. In a terminal:
 
-```text
+```bash
 npm install -g @github/copilot                             # requires Node 22+
-git clone https://github.com/xhluca/agent-talk
-ln -s "$PWD/agent-talk/skills" ~/.copilot/skills           # personal; or a project's .github/skills, .claude/skills, or .agents/skills
+git clone https://github.com/xhluca/agent-talk || git -C agent-talk pull
+ln -sfn "$PWD/agent-talk/skills" ~/.copilot/skills           # personal; or a project's .github/skills, .claude/skills, or .agents/skills
 ```
 
 Copilot CLI discovers each `skills/<name>/SKILL.md` on startup. Confirm they landed
-with `copilot skill list`. Then start Copilot CLI and ask it to get going:
+with `copilot skill list`. Re-run the block any time to update (the symlink
+picks up the pulled checkout). Then start Copilot CLI and ask it to get going:
 
 ```text
 Set up the agent-talk plugin to talk to my peer
