@@ -20,7 +20,7 @@ agent checks for new messages when asked, or at the start of a turn.
 
 On Claude Code, auto-receive uses two components:
 
-1. A background follower. `retalk receive --peer <fingerprint> --follow` decrypts
+1. A background follower. `retalk receive --peer <fingerprint> --follow --interval 60 --quiet` decrypts
    incoming messages and appends each one to the spool file `<user>/inbox.ndjson`.
    This component does not depend on the coding agent and runs the same way on
    Antigravity.

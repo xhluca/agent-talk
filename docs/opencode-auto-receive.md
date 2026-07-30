@@ -27,7 +27,7 @@ below.
 
 On Claude Code, auto-receive uses two components:
 
-1. A background follower. `retalk receive --peer <fingerprint> --follow` decrypts
+1. A background follower. `retalk receive --peer <fingerprint> --follow --interval 60 --quiet` decrypts
    incoming messages and appends each one to the spool file `<user>/inbox.ndjson`.
    This component does not depend on the coding agent and runs the same way on
    opencode.
@@ -125,7 +125,7 @@ The plugin is `extensions/opencode/inbox-monitor.ts`. Its behavior:
   ids.
 
 The follower that writes the spool
-(`retalk receive --peer <fingerprint> --follow`) is unchanged and portable. The
+(`retalk receive --peer <fingerprint> --follow --interval 60 --quiet`) is unchanged and portable. The
 plugin only adds the delivery-into-the-session half that Claude Code's monitor and
 the pi extension also provide.
 

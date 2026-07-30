@@ -25,7 +25,7 @@ drives, not to the user's interactive terminal session. See "Path to support" be
 
 On Claude Code, auto-receive uses two components:
 
-1. A background follower. `retalk receive --peer <fingerprint> --follow` decrypts
+1. A background follower. `retalk receive --peer <fingerprint> --follow --interval 60 --quiet` decrypts
    incoming messages and appends each one to the spool file `<user>/inbox.ndjson`.
    This component does not depend on the coding agent and runs the same way on
    Copilot CLI.
@@ -123,7 +123,7 @@ not whether it can be delivered into the active session.
 
 If Copilot CLI adds a supported way for an external process to deliver input into a
 running interactive session, the work on our side is small and already prepared: the
-portable follower (`retalk receive --peer <fingerprint> --follow`) already writes the
+portable follower (`retalk receive --peer <fingerprint> --follow --interval 60 --quiet`) already writes the
 spool that Claude Code, pi, and opencode read, so only the delivery half would need a
 Copilot-specific adapter. The most likely shapes are:
 

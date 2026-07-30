@@ -135,9 +135,12 @@ field is a control record — key off `kind`.
 - `--no-save-contacts` skips auto-staging contacts that peers `share` with you
   (by default they're staged to the contact-inbox for the **import** skill).
 
-## Background follow (per peer)
-A background `--follow` reader scoped to one peer, writing this user's spool; the
-plugin's inbox monitor streams each new line into the session as it arrives. Be
+## Background follow
+One background `--follow` reader covers the receive-from source — one peer or
+several in a single process (repeat `--peer`; retalk 0.2.0+), each still its own
+scoped read. It polls calmly (`--interval 60`), writes only NDJSON records to
+this user's spool (`--quiet`), and the plugin's inbox monitor streams each new
+line into the session as it arrives. Be
 precise about what "push" does: the monitor injects new messages as **background
 context**, but it can't make the agent speak on its own — they surface on your
 **next turn** (the next time you message the agent), not as a spontaneous ping.
@@ -145,22 +148,30 @@ The spool is the source of truth; the agent reads it each turn and relays
 anything new. (For a true spontaneous wake on each message, see **Proactive
 auto-wake via Monitor** below.)
 
-`receive follow <peer>` — start (idempotent; survives sessions until stopped):
+`receive follow <peer> [<peer2> …]` — start (idempotent; survives sessions
+until stopped):
 ```
-P=<peer>; D="<user>"; mkdir -p "$D"; PID="$D/follow.$P.pid"
+D="<user>"; PEERS="<peer> [<peer2> …]"; LBL=${PEERS// /+}
+mkdir -p "$D"; PID="$D/follow.$LBL.pid"
 if [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; then
-  echo "already following $P (pid $(cat "$PID"))"
+  echo "already following $PEERS (pid $(cat "$PID"))"
 else
-  nohup env RP="$P" UD="$D" RETALK_SAVE_MESSAGE=1 bash -c 'while true; do retalk receive --peer "$RP" --follow --dir "$UD/identity" >> "$UD/inbox.ndjson" 2>> "$UD/follow.err"; sleep 2; done' >/dev/null 2>&1 &
-  echo $! > "$PID"; echo "following $P (pid $(cat "$PID"))"
+  nohup env RP="$PEERS" UD="$D" RETALK_SAVE_MESSAGE=1 bash -c 'A=""; for p in $RP; do A="$A --peer $p"; done; while true; do retalk receive $A --follow --interval 60 --quiet --dir "$UD/identity" >> "$UD/inbox.ndjson" 2>> "$UD/follow.err"; sleep 2; done' >/dev/null 2>&1 &
+  echo $! > "$PID"; echo "following $PEERS (pid $(cat "$PID"))"
 fi
 ```
-`receive follow stop <peer>`:
+- For a rapid live exchange, restart with a smaller `--interval` (e.g. 5); 60
+  is the calm default for all-session listening.
+- retalk older than 0.2.0 has none of these flags: drop `--interval`/`--quiet`
+  and run one `receive --peer X --follow` process per peer (the init skill's
+  install-or-upgrade step normally makes this moot).
+
+`receive follow stop`:
 ```
-P=<peer>; D="<user>"
-[ -f "$D/follow.$P.pid" ] && kill "$(cat "$D/follow.$P.pid")" 2>/dev/null
-pkill -f "receive --peer $P --follow --dir $D/identity" 2>/dev/null
-rm -f "$D/follow.$P.pid"; echo "stopped following $P"
+D="<user>"
+for f in "$D"/follow.*.pid; do [ -e "$f" ] || continue
+  kill "$(cat "$f")" 2>/dev/null; rm -f "$f"; done
+pkill -f "retalk receive .*--dir $D/identity" 2>/dev/null; echo "stopped"
 ```
 `receive follow status`:
 ```
@@ -211,7 +222,7 @@ and prefer the Monitor recipe whenever it's available.
 A systemd user service running the scoped follower (the store holds the relay):
 ```
 [Service]
-ExecStart=/usr/bin/env retalk receive --peer <peer> --follow --dir <user>/identity
+ExecStart=/usr/bin/env retalk receive --peer <peer> --follow --interval 60 --quiet --dir <user>/identity
 StandardOutput=append:<user>/inbox.ndjson
 Restart=always
 Environment=RETALK_SAVE_MESSAGE=1
