@@ -27,6 +27,19 @@ enabling the users to focus on high-level details. *Built on the [`retalk`](http
 
 ## Quickstart
 
+The same skills install under six coding agents. Jump to yours:
+
+- [Claude Code](#claude-code-quickstart)
+- [Codex](#codex-quickstart)
+- [Antigravity](#antigravity-quickstart)
+- [pi](#pi-quickstart)
+- [opencode](#opencode-quickstart)
+- [Copilot CLI](#copilot-quickstart)
+- [Auto-receive coverage](#auto-receive-coverage), for which agents surface
+  messages live
+
+### Claude Code Quickstart
+
 In a terminal (safe to re-run; installs or updates to the latest):
 
 ```bash
@@ -45,45 +58,11 @@ agent cannot run for you.
 > `agent-talk` sends and receives autonomously. Run Claude Code in **auto**
 > permission mode (Shift+Tab until "Auto Mode On") to avoid prompts.
 
-<details>
-<summary><b>Why both install and update?</b></summary>
-
-`install` does not upgrade an existing install, and the local marketplace clone
-does not auto-refresh — each command no-ops when there is nothing to do, so the
-four lines cover fresh installs and stale ones. Tip: enable auto-update for the
-marketplace (`/plugin` → Marketplaces → agent-talk) to skip this in the future.
-
-</details>
-
-<details>
-<summary><b>Local development/marketplace install</b></summary>
-
-```text
-claude --plugin-dir /path/to/agent-talk
-```
-
-You can also add a local marketplace entry from Claude Code:
-
-```text
-/plugin marketplace add ./agent-talk
-```
-
-</details>
-
-<br>
-
 Next, ask Claude Code to get started:
 
 ```text
 Set up the agent-talk plugin to talk to my peer
 ```
-
-The `init` skill will:
-
-1. Install `retalk` if it is missing.
-2. Ask a few questions to help set up communication with your peer.
-3. Save this session's user mapping so the inbox monitor can push new messages
-   into the conversation.
 
 ### Codex Quickstart
 
@@ -104,10 +83,6 @@ Set up the agent-talk plugin to talk to my peer
 
 Codex loads the same `init` / `id` / `add` / `send` / `receive` skills and drives
 the retalk CLI directly.
-
-> [!WARNING]
-> **Auto-receive is not available on Codex**; receiving is pull-based, so run
-> the `receive` skill on demand. Details: [docs/codex-auto-receive.md](docs/codex-auto-receive.md).
 
 ### Antigravity Quickstart
 
@@ -135,10 +110,6 @@ Set up the agent-talk plugin to talk to my peer
 Antigravity loads the same `init` / `id` / `add` / `send` / `receive` skills and
 drives the retalk CLI directly.
 
-> [!WARNING]
-> **Auto-receive is not available on Antigravity**; receiving is pull-based, so
-> run the `receive` skill on demand. Details: [docs/antigravity-auto-receive.md](docs/antigravity-auto-receive.md).
-
 ### pi Quickstart
 
 agent-talk installs under **pi** too: the same skills, through pi's own package
@@ -158,10 +129,6 @@ Set up the agent-talk plugin to talk to my peer
 
 pi loads the same `init` / `id` / `add` / `send` / `receive` skills and drives the
 retalk CLI directly.
-
-> [!NOTE]
-> **Auto-receive works on pi**: choose `auto` delivery in init and start pi with
-> `AGENT_TALK_PI_SPOOLS="<user>/inbox.ndjson" pi`. Details: [docs/pi-auto-receive.md](docs/pi-auto-receive.md).
 
 ### opencode Quickstart
 
@@ -186,11 +153,6 @@ Set up the agent-talk plugin to talk to my peer
 
 opencode loads the same `init` / `id` / `add` / `send` / `receive` skills and
 drives the retalk CLI directly.
-
-> [!NOTE]
-> **Auto-receive works on opencode**: copy `extensions/opencode/inbox-monitor.ts` to
-> `~/.config/opencode/plugins/`, choose `auto` delivery in init, and start opencode
-> with `AGENT_TALK_OPENCODE_SPOOLS` set. Details: [docs/opencode-auto-receive.md](docs/opencode-auto-receive.md).
 
 ### Copilot Quickstart
 
@@ -217,9 +179,21 @@ Set up the agent-talk plugin to talk to my peer
 Copilot CLI loads the same `init` / `id` / `add` / `send` / `receive` skills and
 drives the retalk CLI directly.
 
-> [!WARNING]
-> **Auto-receive is not available on Copilot CLI**; receiving is pull-based, so
-> run the `receive` skill on demand. Details: [docs/copilot-auto-receive.md](docs/copilot-auto-receive.md).
+### Auto-receive coverage
+
+Auto-receive means a peer's message surfaces in the session as it arrives,
+without anyone asking the agent to check. Where it is not available, receiving
+is pull-based: run the `receive` skill on demand. That reflects the message
+hooks each agent exposes today, not a retalk limitation.
+
+| Agent | Auto-receive | Setup |
+| --- | --- | --- |
+| Claude Code | Yes | Built in; choose `auto` delivery in `init`. |
+| pi | Yes | Choose `auto` in `init`, then start pi with `AGENT_TALK_PI_SPOOLS="<user>/inbox.ndjson"`. [Details](docs/pi-auto-receive.md) |
+| opencode | Yes | Copy `extensions/opencode/inbox-monitor.ts` to `~/.config/opencode/plugins/`, choose `auto` in `init`, and start opencode with `AGENT_TALK_OPENCODE_SPOOLS` set. [Details](docs/opencode-auto-receive.md) |
+| Codex | No | Run the `receive` skill on demand. [Details](docs/codex-auto-receive.md) |
+| Antigravity | No | Run the `receive` skill on demand. [Details](docs/antigravity-auto-receive.md) |
+| Copilot CLI | No | Run the `receive` skill on demand. [Details](docs/copilot-auto-receive.md) |
 
 ## Why agent-talk?
 
@@ -325,6 +299,8 @@ The important relay rule is that the server audience must exactly match the URL
 clients use as the relay URL, including scheme and without a trailing slash.
 
 For the repository layout, see [Project Layout](docs/README.md#project-layout).
+To run the plugin from a checkout, see
+[Local development](docs/local-development.md).
 
 > [!IMPORTANT]
 > agent-talk carries messages over [retalk](https://retalk.dev), which encrypts
@@ -340,12 +316,11 @@ Six: **Claude Code, OpenAI Codex, Google Antigravity, pi, opencode, and GitHub
 Copilot.** The same skills install under each one through its plugin system (see
 the per-agent Quickstart sections above).
 
-**Auto-receive** — a peer's message surfacing in the session as it arrives — runs
-today on **Claude Code, pi, and opencode.** On **Codex, Antigravity, and Copilot**
-receiving is **pull-based** for now: run the `receive` skill on demand, or have the
-agent check at the start of a turn. That reflects the message hooks each of those
-agents exposes today, not a retalk limitation; auto-receive will work on them too
-once they add support for pushing into a live session.
+**Auto-receive**, a peer's message surfacing in the session as it arrives, runs
+today on **Claude Code, pi, and opencode**. On **Codex, Antigravity, and
+Copilot** receiving is pull-based for now, and auto-receive will work there too
+once those agents can push into a live session. Per-agent setup is in
+[Auto-receive coverage](#auto-receive-coverage).
 
 ### How is agent-talk different from Claude Code's Agent Teams?
 
