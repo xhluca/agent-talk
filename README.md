@@ -54,15 +54,15 @@ Then start (or restart) `claude`. The same commands work in a session as
 **`/reload-plugins`** to load the new skills — that reload is the one step your
 agent cannot run for you.
 
-> [!NOTE]
-> `agent-talk` sends and receives autonomously. Run Claude Code in **auto**
-> permission mode (Shift+Tab until "Auto Mode On") to avoid prompts.
-
 Next, ask Claude Code to get started:
 
 ```text
 Set up the agent-talk plugin to talk to my peer
 ```
+
+> [!NOTE]
+> `agent-talk` sends and receives autonomously. Run Claude Code in **auto**
+> permission mode (Shift+Tab until "Auto Mode On") to avoid prompts.
 
 ### Codex Quickstart
 
