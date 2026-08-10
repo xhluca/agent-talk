@@ -26,7 +26,8 @@ drives, not to the user's interactive terminal session. See "Path to support" be
 On Claude Code, auto-receive uses two components:
 
 1. A background follower. `retalk receive --peer <fingerprint> --follow --interval 60 --quiet` decrypts
-   incoming messages and appends each one to the spool file `<user>/inbox.ndjson`.
+   incoming messages, and the plugin's spool writer appends each one to this
+   session's spool, `<user>/sessions/<session-id>.ndjson`.
    This component does not depend on the coding agent and runs the same way on
    Copilot CLI.
 2. An inbox monitor. A Claude Code plugin reads new lines from that spool file and

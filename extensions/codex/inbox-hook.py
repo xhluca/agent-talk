@@ -51,20 +51,32 @@ def state_path(spool):
     return os.path.join(os.path.dirname(os.path.abspath(spool)), STATE_NAME)
 
 
-def read_state(spool):
+def load_state(spool):
+    """The whole state file. It is keyed by spool path, because sessions share
+    a directory (`<user>/sessions/`) and each spool needs its own cursor."""
     try:
         with open(state_path(spool)) as fh:
             data = json.load(fh)
     except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def read_state(spool):
+    entry = load_state(spool).get(os.path.abspath(spool))
+    if not isinstance(entry, dict):
         return 0, []
-    return int(data.get("offset", 0)), list(data.get("ids", []))
+    return int(entry.get("offset", 0)), list(entry.get("ids", []))
 
 
 def write_state(spool, offset, ids):
+    data = load_state(spool)
+    data[os.path.abspath(spool)] = {"offset": offset,
+                                    "ids": ids[-MAX_REMEMBERED_IDS:]}
     tmp = state_path(spool) + ".tmp"
     try:
         with open(tmp, "w") as fh:
-            json.dump({"offset": offset, "ids": ids[-MAX_REMEMBERED_IDS:]}, fh)
+            json.dump(data, fh)
         os.replace(tmp, state_path(spool))
     except OSError:
         pass  # a hook must never break the session over its own bookkeeping

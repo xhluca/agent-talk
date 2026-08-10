@@ -26,7 +26,8 @@ end to end between two live pi sessions (see "Verification").
 On Claude Code, auto-receive uses two components:
 
 1. A background follower. `retalk receive --peer <fingerprint> --follow --interval 60 --quiet` decrypts
-   incoming messages and appends each one to the spool file `<user>/inbox.ndjson`.
+   incoming messages, and the plugin's spool writer appends each one to this
+   session's spool, `<user>/sessions/<session-id>.ndjson`.
    This component does not depend on the coding agent and runs the same way on pi.
 2. An inbox monitor. A Claude Code plugin reads new lines from that spool file and
    delivers them into the running session, where they appear on the agent's next
@@ -63,7 +64,7 @@ behaves.
 
 A pi extension reproduces the Claude Code monitor, and this is the mechanism
 agent-talk ships (`extensions/inbox-monitor.ts`). On `session_start` it watches the
-follower's spool file `<user>/inbox.ndjson`. When a new line appears, it parses the
+session's spool file `<user>/sessions/<session-id>.ndjson`. When a new line appears, it parses the
 message and calls `pi.sendMessage` with `triggerTurn: true`, so the message appears
 in the running session and the agent takes its next turn. The follower that writes
 the spool is the same portable component used on Claude Code. See "Implementation"
@@ -92,7 +93,7 @@ manifest under `extensions`, so pi loads it the same way it loads the skills in
 `skills/`. Its behavior:
 
 - On `session_start` it reads the environment variable `AGENT_TALK_PI_SPOOLS`, a
-  colon-separated list of absolute `inbox.ndjson` paths, and starts a watcher for
+  colon-separated list of absolute spool paths, and starts a watcher for
   each. If the variable is unset it registers nothing, so installing the plugin
   does not change any session that has not opted in.
 - Each watcher seeks to the end of its spool at startup, so only messages that
@@ -117,11 +118,11 @@ also provides.
 
 1. Install the plugin so pi has the extension: `pi install git:github.com/xhluca/agent-talk`.
 2. Run the agent-talk init skill and choose the `auto` delivery mode. This starts
-   the `receive --follow` follower that writes `<user>/inbox.ndjson`.
+   the `receive --follow` follower whose output the spool writer fans out.
 3. Start pi with `AGENT_TALK_PI_SPOOLS` set to that spool path, for example:
 
    ```bash
-   AGENT_TALK_PI_SPOOLS="<user>/inbox.ndjson" pi
+   AGENT_TALK_PI_SPOOLS="<user>/sessions/<session-id>.ndjson" pi
    ```
 
    To watch more than one identity in the same session, join their spool paths with

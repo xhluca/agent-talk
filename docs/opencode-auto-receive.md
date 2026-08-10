@@ -28,7 +28,8 @@ below.
 On Claude Code, auto-receive uses two components:
 
 1. A background follower. `retalk receive --peer <fingerprint> --follow --interval 60 --quiet` decrypts
-   incoming messages and appends each one to the spool file `<user>/inbox.ndjson`.
+   incoming messages, and the plugin's spool writer appends each one to this
+   session's spool, `<user>/sessions/<session-id>.ndjson`.
    This component does not depend on the coding agent and runs the same way on
    opencode.
 2. An inbox monitor. A Claude Code plugin reads new lines from that spool file and
@@ -69,7 +70,7 @@ this is the mechanism agent-talk ships
 (`extensions/opencode/inbox-monitor.ts`). A plugin is a JavaScript or TypeScript
 module that exports a function; opencode calls it once per session with a context
 object and takes the hooks it returns. On load the plugin starts watching the
-follower's spool file `<user>/inbox.ndjson`. When a new line appears, it parses
+session's spool file `<user>/sessions/<session-id>.ndjson`. When a new line appears, it parses
 the message and calls `client.session.promptAsync` for the active session, so the
 message appears in the running session and the agent takes its next turn. The
 plugin learns the active session id from opencode's `event` hook, which carries
@@ -109,7 +110,7 @@ delivered.
 The plugin is `extensions/opencode/inbox-monitor.ts`. Its behavior:
 
 - On load it reads the environment variable `AGENT_TALK_OPENCODE_SPOOLS`, a
-  colon-separated list of absolute `inbox.ndjson` paths, and starts a watcher for
+  colon-separated list of absolute spool paths, and starts a watcher for
   each. If the variable is unset it registers nothing, so installing the plugin
   does not change any session that has not opted in.
 - Each watcher seeks to the end of its spool at startup, so only messages that
@@ -137,12 +138,12 @@ the pi extension also provide.
    `.opencode/plugins/inbox-monitor.ts` (project), or a reference to the npm
    package in `opencode.json` under `"plugin"`.
 2. Run the agent-talk init skill and choose the `auto` delivery mode. This starts
-   the `receive --follow` follower that writes `<user>/inbox.ndjson`.
+   the `receive --follow` follower whose output the spool writer fans out.
 3. Start opencode with `AGENT_TALK_OPENCODE_SPOOLS` set to that spool path, for
    example:
 
    ```bash
-   AGENT_TALK_OPENCODE_SPOOLS="<user>/inbox.ndjson" opencode
+   AGENT_TALK_OPENCODE_SPOOLS="<user>/sessions/<session-id>.ndjson" opencode
    ```
 
    To watch more than one identity in the same session, join their spool paths

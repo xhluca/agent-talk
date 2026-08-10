@@ -138,9 +138,14 @@ field is a control record — key off `kind`.
 ## Background follow
 One background `--follow` reader covers the receive-from source — one peer or
 several in a single process (repeat `--peer`; retalk 0.2.0+), each still its own
-scoped read. It polls calmly (`--interval 60`), writes only NDJSON records to
-this user's spool (`--quiet`), and the plugin's inbox monitor streams each new
-line into the session as it arrives. Be
+scoped read. It polls calmly (`--interval 60`), writes only NDJSON records
+(`--quiet`), and pipes them through the plugin's spool writer, which stamps an
+arrival time and copies each record to **every session registered to this user**
+(`<user>/sessions/<session-id>.ndjson`). Two sessions sharing one identity each
+get their own copy and their own read position instead of racing for the same
+lines, and the decrypted text lives only as long as the session does. retalk's
+saved history stays the durable record. The plugin's inbox monitor streams each
+new line into the session as it arrives. Be
 precise about what "push" does: the monitor injects new messages as **background
 context**, but it can't make the agent speak on its own — they surface on your
 **next turn** (the next time you message the agent), not as a spontaneous ping.
@@ -156,10 +161,14 @@ mkdir -p "$D"; PID="$D/follow.$LBL.pid"
 if [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; then
   echo "already following $PEERS (pid $(cat "$PID"))"
 else
-  nohup env RP="$PEERS" UD="$D" RETALK_SAVE_MESSAGE=1 bash -c 'A=""; for p in $RP; do A="$A --peer $p"; done; while true; do retalk receive $A --follow --interval 60 --quiet --dir "$UD/identity" >> "$UD/inbox.ndjson" 2>> "$UD/follow.err"; sleep 2; done' >/dev/null 2>&1 &
+  nohup env RP="$PEERS" UD="$D" W="<plugin>/bin/spool-writer.py" RETALK_SAVE_MESSAGE=1 bash -c 'A=""; for p in $RP; do A="$A --peer $p"; done; while true; do retalk receive $A --follow --interval 60 --quiet --dir "$UD/identity" 2>> "$UD/follow.err" | python3 "$W" --user "$UD" 2>> "$UD/follow.err"; sleep 2; done' >/dev/null 2>&1 &
   echo $! > "$PID"; echo "following $PEERS (pid $(cat "$PID"))"
 fi
 ```
+- `<plugin>` is this plugin's root (`${CLAUDE_PLUGIN_ROOT}` under Claude Code).
+  The writer keeps writing the older `<user>/inbox.ndjson` as well, so a consumer
+  still pointed at that path keeps working; add `--no-legacy` once nothing reads
+  it.
 - For a rapid live exchange, restart with a smaller `--interval` (e.g. 5); 60
   is the calm default for all-session listening.
 - retalk older than 0.2.0 has none of these flags: drop `--interval`/`--quiet`
@@ -179,11 +188,14 @@ D="<user>"
 for f in "$D"/follow.*.pid; do [ -e "$f" ] || continue
   p=$(basename "$f" .pid); p=${p#follow.}
   kill -0 "$(cat "$f")" 2>/dev/null && echo "following: $p (pid $(cat "$f"))"; done
-echo "--- recent messages (spool) ---"
-tail -n 20 "$D/inbox.ndjson" 2>/dev/null || echo "(none yet)"
+echo "--- recent messages (this session's spool) ---"
+tail -n 20 "$D/sessions/${CLAUDE_SESSION_ID}.ndjson" 2>/dev/null \
+  || tail -n 20 "$D/inbox.ndjson" 2>/dev/null || echo "(none yet)"
 ```
 
-The spool (`<user>/inbox.ndjson`) is the durable record; the monitor's push is
+The spool (`<user>/sessions/<session-id>.ndjson`) is this session's record of
+what arrived; retalk's saved history (**history** skill) is the durable one that
+survives the session. The monitor's push is
 best-effort, interactive-CLI only, and (as above) can't prompt the agent
 unprompted — so reading the spool is the reliable way to never miss one.
 
@@ -200,13 +212,14 @@ Monitor(
   description: "New agent-talk messages from <peer>",
   persistent: true,
   timeout_ms: 3600000,
-  command: "tail -n 0 -f \"<user>/inbox.ndjson\" | grep --line-buffered '\"from\":'"
+  command: "tail -n 0 -F \"<user>/sessions/<session-id>.ndjson\" | grep --line-buffered '\"from\":'"
 )
 ```
 
 Gotchas:
-- Tail the **spool the follower writes** (`<user>/inbox.ndjson`), not a task
-  output file.
+- Tail **this session's spool** (`<user>/sessions/<session-id>.ndjson`), not a
+  task output file, and not another session's. Use `-F` so the tail survives the
+  spool being rotated or swept.
 - `--line-buffered` is required — plain grep buffers matches unseen.
 - `tail -n 0` skips replaying old messages on start.
 - Keep a long-interval scheduled wake-up (~25 min) only as a backstop in case
@@ -222,8 +235,7 @@ and prefer the Monitor recipe whenever it's available.
 A systemd user service running the scoped follower (the store holds the relay):
 ```
 [Service]
-ExecStart=/usr/bin/env retalk receive --peer <peer> --follow --interval 60 --quiet --dir <user>/identity
-StandardOutput=append:<user>/inbox.ndjson
+ExecStart=/bin/sh -c 'retalk receive --peer <peer> --follow --interval 60 --quiet --dir <user>/identity | python3 <plugin>/bin/spool-writer.py --user <user>'
 Restart=always
 Environment=RETALK_SAVE_MESSAGE=1
 # Environment=RETALK_PASSPHRASE=<secret>   # only if the identity is encrypted

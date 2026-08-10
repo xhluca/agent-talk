@@ -33,17 +33,18 @@ Sending and receiving are end-to-end encrypted and, by default, autonomous. The 
 
 You can also message several peers at once. The `group` skill keeps a local roster of contacts under a friendly name, and `send --group NAME` delivers a separate encrypted copy to each member. The roster stays on the client, so the relay never learns who is in a group; it just sees ordinary one-to-one messages. Replies come back from the individual members and render as a single room transcript.
 
-Delivery is either **auto** (recommended) or **manual**, chosen at `init`. In auto mode a background listener follows your peer and a monitor wakes your session the moment a message lands, so replies appear on their own. In manual mode you ask the agent to check. Either way, the on-disk log at `<user>/inbox.ndjson` is the durable record, and agent-talk also keeps a sealed history of both directions by default that you can replay with the `history` skill.
+Delivery is either **auto** (recommended) or **manual**, chosen at `init`. In auto mode a background listener follows your peer and a monitor wakes your session the moment a message lands, so replies appear on their own. In manual mode you ask the agent to check. Either way, agent-talk keeps a sealed history of both directions by default, which you replay with the `history` skill. That history is the durable record: it stays encrypted at rest and outlives any session. What a session reads from is a spool of its own, `<user>/sessions/<session-id>.ndjson`, holding the messages that arrived while it was registered. Each session gets its own copy and its own read position, so parallel sessions on one identity never consume each other's mail, and the decrypted text does not accumulate under the identity forever.
 
 ## Project Layout
 
 ```text
 .claude-plugin/          plugin and local marketplace manifests
 bin/inbox-monitor.sh     Claude Code monitor command for inbox push
+bin/spool-writer.py      fans follower output out to per-session spools
 demos/                   asciinema recordings and rendered GIFs
 monitors/monitors.json   monitor registration
 skills/*/SKILL.md        Claude Code skills for retalk commands
 skills/relay/*.md        relay hosting guides
-extensions/              pi and opencode inbox plugins (auto-receive)
+extensions/              pi, opencode, and codex inbox plugins/hooks (auto-receive)
 tests/                   static, monitor, and opt-in E2E tests
 ```

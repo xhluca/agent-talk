@@ -64,12 +64,12 @@ never collide. Below, `<user>` is the chosen user's **absolute directory**.
    this plugin's `skills/` there — see the Copilot Quickstart in the README);
    the inbox **monitor** and the `CLAUDE_SESSION_ID` session-map (step 4) are
    Claude-Code-only, so on other agents skip them; proactive auto-receive is not
-   wired up on codex, Antigravity, or Copilot CLI, so there run the **receive** skill
+   wired up on Antigravity or Copilot CLI, so there run the **receive** skill
    on demand.
-   On **pi** and **opencode** it is available: each ships an inbox plugin that
-   surfaces incoming messages into the live session; start it as described in step
-   4b (pi) or step 4c (opencode) instead of step 4. The retalk commands themselves
-   are identical everywhere.
+   On **pi**, **opencode**, and **codex** it is available: each ships an inbox
+   plugin or hook that surfaces incoming messages into the live session; start it
+   as described in step 4b (pi), 4c (opencode), or 4d (codex) instead of step 4.
+   The retalk commands themselves are identical everywhere.
 
 ## 1. Update retalk AND agent-talk to the latest
 Behavior changes often on both sides, and a stale client can mismatch a peer or
@@ -370,21 +370,27 @@ Copilot CLI).
 On Antigravity and Copilot CLI, check mail with the **receive** skill on demand;
 on pi, use step 4b instead; on opencode, step 4c; on Codex, step 4d.
 ```
-mkdir -p "$HOME/.agent-talk/by-session"
+mkdir -p "$HOME/.agent-talk/by-session" "<user>/sessions"
 echo "<user>" > "$HOME/.agent-talk/by-session/${CLAUDE_SESSION_ID}"
+: >> "<user>/sessions/${CLAUDE_SESSION_ID}.ndjson"     # this session's spool
+python3 "<plugin>/bin/spool-writer.py" --user "<user>" --gc   # sweep dead sessions
 ```
+Incoming messages are copied to a spool **per session**, not one file per
+identity, so parallel sessions on the same identity never consume each other's
+mail and the decrypted text goes away with the session. The durable record is
+retalk's saved history (**history** skill), which stays encrypted at rest.
 
 ## 4b. Enable auto-receive on pi (pi only)
 On a **pi** host the plugin ships an inbox extension that surfaces incoming
 messages into the live session (the pi equivalent of Claude Code's monitor).
 It watches the spool paths named in the `AGENT_TALK_PI_SPOOLS` environment
-variable (colon-separated absolute `inbox.ndjson` paths) and injects each new
+variable (colon-separated absolute spool paths) and injects each new
 message, so it must be set **before pi starts**. You cannot change a running
 process's environment, so tell the user to relaunch pi with it set. For this
 session's user:
 ```
 # add this user's spool to any already set, then start pi:
-AGENT_TALK_PI_SPOOLS="$(printf '%s%s' "${AGENT_TALK_PI_SPOOLS:+$AGENT_TALK_PI_SPOOLS:}" "<user>/inbox.ndjson")" pi
+AGENT_TALK_PI_SPOOLS="$(printf '%s%s' "${AGENT_TALK_PI_SPOOLS:+$AGENT_TALK_PI_SPOOLS:}" "<user>/sessions/<session-id>.ndjson")" pi
 ```
 The `receive --follow` reader still writes the spool (delivery mode `auto`,
 step 7); the extension is what pushes those spool lines into the session. With
@@ -401,13 +407,13 @@ it injects each new message with `client.session.promptAsync`. Load it the way
 opencode loads plugins — copy it to `~/.config/opencode/plugins/inbox-monitor.ts`
 (global) or `<project>/.opencode/plugins/inbox-monitor.ts` (project). It watches
 the spool paths named in the `AGENT_TALK_OPENCODE_SPOOLS` environment variable
-(colon-separated absolute `inbox.ndjson` paths) and injects each new message, so
+(colon-separated absolute spool paths) and injects each new message, so
 it must be set **before opencode starts**. You cannot change a running process's
 environment, so tell the user to relaunch opencode with it set. For this session's
 user:
 ```
 # add this user's spool to any already set, then start opencode:
-AGENT_TALK_OPENCODE_SPOOLS="$(printf '%s%s' "${AGENT_TALK_OPENCODE_SPOOLS:+$AGENT_TALK_OPENCODE_SPOOLS:}" "<user>/inbox.ndjson")" opencode
+AGENT_TALK_OPENCODE_SPOOLS="$(printf '%s%s' "${AGENT_TALK_OPENCODE_SPOOLS:+$AGENT_TALK_OPENCODE_SPOOLS:}" "<user>/sessions/<session-id>.ndjson")" opencode
 ```
 The `receive --follow` reader still writes the spool (delivery mode `auto`,
 step 7); the plugin is what pushes those spool lines into the session. With no
@@ -433,7 +439,7 @@ Then relaunch Codex with this session's spool, since environment variables must
 be set before the process starts:
 ```
 # add this user's spool to any already set, then start codex:
-AGENT_TALK_CODEX_SPOOLS="$(printf '%s%s' "${AGENT_TALK_CODEX_SPOOLS:+$AGENT_TALK_CODEX_SPOOLS:}" "<user>/inbox.ndjson")" codex
+AGENT_TALK_CODEX_SPOOLS="$(printf '%s%s' "${AGENT_TALK_CODEX_SPOOLS:+$AGENT_TALK_CODEX_SPOOLS:}" "<user>/sessions/<session-id>.ndjson")" codex
 ```
 Codex skips hooks it has not been told to trust: the first session prints a
 review warning, and the user approves the three agent-talk entries once under

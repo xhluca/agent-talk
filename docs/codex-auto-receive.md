@@ -23,18 +23,20 @@ a workaround.
 ## How it works
 
 1. A background follower. `retalk receive --peer <fingerprint> --follow
-   --interval 60 --quiet` decrypts incoming messages and appends each one to the
-   spool file `<user>/inbox.ndjson`. This component does not depend on the coding
-   agent and runs the same way everywhere.
+   --interval 60 --quiet` decrypts incoming messages, and the plugin's spool
+   writer copies each one to this session's spool,
+   `<user>/sessions/<session-id>.ndjson`. Neither component depends on the coding
+   agent, and both run the same way everywhere.
 2. The inbox hook. `extensions/codex/inbox-hook.py` reads the lines added to the
    spool since it last ran and hands them to Codex, as extra context for the
    `SessionStart` and `UserPromptSubmit` events, and as a continuation prompt for
    `Stop`.
 
-Each spool has a cursor file, `<user>/.codex-hook-state.json`, recording the byte
-offset consumed and the message ids already delivered. The cursor advances before
-a message is handed over, which is what keeps a `Stop` hook from reporting the
-same message on every turn and blocking forever.
+Cursors live in `<user>/sessions/.codex-hook-state.json`, keyed by spool path, so
+sessions sharing that directory keep separate read positions. Each entry records
+the byte offset consumed and the message ids already delivered, and it advances
+before a message is handed over, which is what keeps a `Stop` hook from reporting
+the same message on every turn and blocking forever.
 
 ## Setup
 
@@ -49,7 +51,7 @@ This appends three blocks to `$CODEX_HOME/config.toml` (default
 Codex with the spool to watch:
 
 ```bash
-AGENT_TALK_CODEX_SPOOLS="<user>/inbox.ndjson" codex
+AGENT_TALK_CODEX_SPOOLS="<user>/sessions/<session-id>.ndjson" codex
 ```
 
 The variable takes a colon-separated list, so one session can watch several
