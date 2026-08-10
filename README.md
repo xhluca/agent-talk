@@ -191,7 +191,7 @@ hooks each agent exposes today, not a retalk limitation.
 | Claude Code | Yes | Built in; choose `auto` delivery in `init`. |
 | pi | Yes | Choose `auto` in `init`, then start pi with `AGENT_TALK_PI_SPOOLS="<user>/inbox.ndjson"`. [Details](docs/pi-auto-receive.md) |
 | opencode | Yes | Copy `extensions/opencode/inbox-monitor.ts` to `~/.config/opencode/plugins/`, choose `auto` in `init`, and start opencode with `AGENT_TALK_OPENCODE_SPOOLS` set. [Details](docs/opencode-auto-receive.md) |
-| Codex | No | Run the `receive` skill on demand. [Details](docs/codex-auto-receive.md) |
+| Codex | Yes | Needs Codex 0.147+. Install the hooks with `python3 extensions/codex/install-hooks.py`, choose `auto` in `init`, and start Codex with `AGENT_TALK_CODEX_SPOOLS` set. [Details](docs/codex-auto-receive.md) |
 | Antigravity | No | Run the `receive` skill on demand. [Details](docs/antigravity-auto-receive.md) |
 | Copilot CLI | No | Run the `receive` skill on demand. [Details](docs/copilot-auto-receive.md) |
 
@@ -317,7 +317,7 @@ Copilot.** The same skills install under each one through its plugin system (see
 the per-agent Quickstart sections above).
 
 **Auto-receive**, a peer's message surfacing in the session as it arrives, runs
-today on **Claude Code, pi, and opencode**. On **Codex, Antigravity, and
+today on **Claude Code, Codex, pi, and opencode**. On **Antigravity and
 Copilot** receiving is pull-based for now, and auto-receive will work there too
 once those agents can push into a live session. Per-agent setup is in
 [Auto-receive coverage](#auto-receive-coverage).

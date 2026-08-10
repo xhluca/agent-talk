@@ -2,127 +2,98 @@
 
 ## Summary
 
-Auto-receive is not currently supported on Codex. In this document, "auto-receive"
-means an incoming message from a peer appearing in your active session without any
-action from you, so that the agent can respond in the conversation you are already
-using.
+Auto-receive works on Codex from version 0.147 onward, through Codex's hook
+system. In this document, "auto-receive" means an incoming message from a peer
+appearing in your active session without any action from you, so that the agent
+can respond in the conversation you are already using.
 
-Sending and receiving messages both work on Codex. The capability that is missing
-is the delivery of an incoming message into a session that is already running. This
-is a limitation in Codex, not in retalk: Codex provides no supported way for an
-external process to deliver input into a running interactive session. Detecting
-that a new message has arrived is straightforward, but there is no supported
-channel for placing that message into the active session. Until Codex adds one,
-receiving on Codex is pull-based: the agent checks for new messages when asked, or
-at the start of a turn.
+Codex delivers messages at three points: when a session starts, when you submit
+a prompt, and when the agent finishes a turn. The third one is what makes
+delivery feel automatic. A `Stop` hook that returns `{"decision": "block",
+"reason": "..."}` makes Codex create a continuation prompt, which acts as a new
+user message, so a peer's message that lands while the agent is working is
+handled as soon as the current turn ends, with nothing typed by you.
 
-## Background: how auto-receive works on Claude Code
+One case is still not covered. A session sitting idle at the prompt, with no
+turn running and nobody typing, does not wake on its own. The message waits in
+the spool and surfaces at the next prompt or the next end of turn. Earlier
+versions of Codex covered none of these cases, so this is a change in kind, not
+a workaround.
 
-On Claude Code, auto-receive uses two components:
+## How it works
 
-1. A background follower. `retalk receive --peer <fingerprint> --follow --interval 60 --quiet` decrypts
-   incoming messages and appends each one to the spool file `<user>/inbox.ndjson`.
-   This component does not depend on the coding agent and runs the same way on Codex.
-2. An inbox monitor. A Claude Code plugin reads new lines from that spool file and
-   delivers them into the running session, where they appear on the agent's next
-   turn. This component is specific to Claude Code.
+1. A background follower. `retalk receive --peer <fingerprint> --follow
+   --interval 60 --quiet` decrypts incoming messages and appends each one to the
+   spool file `<user>/inbox.ndjson`. This component does not depend on the coding
+   agent and runs the same way everywhere.
+2. The inbox hook. `extensions/codex/inbox-hook.py` reads the lines added to the
+   spool since it last ran and hands them to Codex, as extra context for the
+   `SessionStart` and `UserPromptSubmit` events, and as a continuation prompt for
+   `Stop`.
 
-The follower is portable. The monitor, which delivers a message into a running
-session, has no equivalent on Codex, and that is the reason auto-receive is
-unavailable.
+Each spool has a cursor file, `<user>/.codex-hook-state.json`, recording the byte
+offset consumed and the message ids already delivered. The cursor advances before
+a message is handed over, which is what keeps a `Stop` hook from reporting the
+same message on every turn and blocking forever.
 
-## The limitation
+## Setup
 
-Codex provides no supported mechanism for an external process to deliver input into
-a running interactive session. This single constraint is behind every finding
-below. Detecting new messages is easy and can be done by polling the relay or
-watching the inbox file. Delivering a detected message into the active session is
-what current Codex does not allow.
+Register the hooks once:
 
-This is confirmed by the open Codex feature request
-[#15299](https://github.com/openai/codex/issues/15299), "Support inbound MCP
-notifications routed into an active Codex CLI session", which states that there is
-no documented path for server notifications to appear as user-visible input in the
-active session, and no command to send input to an active session from another
-process.
+```bash
+python3 extensions/codex/install-hooks.py
+```
 
-## Approaches investigated
+This appends three blocks to `$CODEX_HOME/config.toml` (default
+`~/.codex/config.toml`) between marked lines, and is safe to re-run. Then start
+Codex with the spool to watch:
 
-### The app-server protocol
+```bash
+AGENT_TALK_CODEX_SPOOLS="<user>/inbox.ndjson" codex
+```
 
-Codex includes an experimental app-server protocol (JSON-RPC) with methods such as
-`thread/inject_items` and `turn/steer`, which append items to a conversation or
-inject input into an active turn. We tested whether these can deliver a message
-into a normally started interactive session. They cannot:
+The variable takes a colon-separated list, so one session can watch several
+users. With it unset the hook exits immediately, so installing the hooks does not
+change any session that has not opted in.
 
-- A normally started Codex session does not expose a control socket that another
-  process can connect to. Its app-server runs in-process and uses anonymous socket
-  pairs, so nothing listens on a filesystem path.
-- Starting a separate app-server process is possible without a special install, but
-  that process has its own conversation store. Injecting into a conversation writes
-  to a copy loaded from disk, and the running session does not read it. In testing,
-  the inject call succeeded but nothing appeared in the running session.
-- The managed daemon that would share live state requires the standalone installer,
-  not the npm package.
+Codex will not run a hook it has not been told to trust. The first session after
+installing prints a warning that hooks need review; open `/hooks`, review the
+three agent-talk entries, and trust them. Trust is recorded against the hook's
+hash and persists until the hook changes. Automation that vets its own hook
+sources can instead pass `--dangerously-bypass-hook-trust`, which skips the
+prompt for that invocation only.
 
-The author of issue #15299 reaches the same conclusion: the app-server is not a
-substitute for delivering input into the normal interactive session.
+## Verified behavior
 
-### MCP notifications
+Tested end to end against Codex 0.147 with a live relay and two real identities:
 
-The appropriate mechanism is a Model Context Protocol (MCP) notification that Codex
-delivers into the session. A community patch, referenced in issue #15299,
-implements this: a stdio MCP server sends a notification that includes a `toSession`
-field, and Codex presents it in the running session as a user message. This is the
-behavior we want, but the patch has not been merged into any released version of
-Codex. The current release does not include it.
+- A message waiting before the session started was surfaced to the agent on the
+  first prompt.
+- A message sent six seconds into a running turn was delivered when that turn
+  ended. The session log shows `hook: Stop Blocked`, followed by the agent
+  quoting the peer's message and acting on it, with no user input in between.
 
-Codex does support MCP elicitation, in which a server requests input from the user
-while handling a tool call that the model has initiated. This is a supported
-feature, but it applies only during an active tool call, not as an unsolicited
-delivery into an idle session, so it does not provide auto-receive.
+## What does not work, and why
 
-### Periodic polling
-
-A background process can poll for new messages on a fixed interval. Polling
-addresses detection, which was never the difficulty. It does not address delivery:
-after the poller detects a message, it still has no supported way to place it into
-the running session. The polling interval changes how quickly a message is
-detected, not whether it can be delivered into the active session.
-
-## Current behavior on Codex
-
-- Sending and receiving both work, through the agent-talk skills or the retalk CLI.
-- Receiving is pull-based. The agent checks for new messages when asked, or at the
-  start of a turn if configured to do so. A message that has already arrived appears
-  the next time you interact with the session. This is comparable to Claude Code,
-  where the monitor also presents messages on the next turn rather than interrupting
-  an idle session.
-- Two optional additions can help, though neither delivers into the active session:
-  a background process can raise an operating-system notification so you know a
-  message has arrived, or a separate non-interactive Codex process can reply in its
-  own session.
-
-## Path to support
-
-If Codex adds inbound notification delivery into an active session (tracked in issue
-#15299 and the community patch referenced there), the work required on our side is
-small and already prepared:
-
-1. agent-talk provides a stdio MCP server that wraps the retalk CLI. It is
-   implemented on the `retalk-mcp-server` branch (see the closed
-   [PR #16](https://github.com/xhluca/agent-talk/pull/16)). Its tools already work
-   on current Codex, and it emits a `toSession` notification when a message arrives,
-   which current Codex ignores.
-2. The user registers the server once in `~/.codex/config.toml`, enabling
-   notification delivery for it. This is a one-time configuration and does not change
-   how Codex is started.
-3. Incoming messages then appear in the active session automatically.
-
-No further changes would be needed on our side once Codex supports the notification.
+- **Waking an idle session.** Nothing outside the session can push into it. A
+  normally started Codex session runs its app-server in-process over anonymous
+  socket pairs, so it has no listening endpoint for another process to connect
+  to. We re-confirmed this on 0.147 by inspecting a live session's open sockets.
+- **The app-server protocol.** `turn/start` and `turn/steer` exist and do inject
+  turns, but only into threads the app-server itself owns, which is how the IDE
+  extension and desktop app drive their sessions. A separate app-server process
+  has its own conversation store, so injecting there does not reach your terminal
+  session.
+- **The managed daemon and remote control.** `codex app-server daemon` and
+  `codex remote-control` require the standalone install produced by the Codex
+  installer, and refuse to start on the npm package. They also drive daemon-owned
+  threads rather than your interactive session.
+- **MCP notifications.** The `toSession` notification from
+  [issue #15299](https://github.com/openai/codex/issues/15299) is still not in a
+  released Codex. It would cover the idle case; hooks do not.
 
 ## References
 
-- [openai/codex#15299, "Support inbound MCP notifications routed into an active Codex CLI session"](https://github.com/openai/codex/issues/15299)
-- The `surface_notifications` community patch referenced in issue #15299
+- [Codex hooks documentation](https://developers.openai.com/codex/hooks)
+- [openai/codex#15299, inbound notifications into an active session](https://github.com/openai/codex/issues/15299)
 - [agent-talk PR #16, the retalk MCP server (closed; branch `retalk-mcp-server`)](https://github.com/xhluca/agent-talk/pull/16)

@@ -367,8 +367,8 @@ This wires the chosen user to Claude Code's inbox **monitor** via a session map.
 It relies on `CLAUDE_SESSION_ID` and the monitor, so it applies **only on Claude
 Code** — skip this step on other agents (e.g. codex, Antigravity, pi, opencode,
 Copilot CLI).
-On codex, Antigravity, and Copilot CLI, check mail with the **receive** skill on
-demand; on pi, use step 4b instead; on opencode, use step 4c instead.
+On Antigravity and Copilot CLI, check mail with the **receive** skill on demand;
+on pi, use step 4b instead; on opencode, step 4c; on Codex, step 4d.
 ```
 mkdir -p "$HOME/.agent-talk/by-session"
 echo "<user>" > "$HOME/.agent-talk/by-session/${CLAUDE_SESSION_ID}"
@@ -416,6 +416,34 @@ user who has not opted in. If relaunching now is not convenient, receiving stays
 pull-based (**receive** skill) until the next launch. See
 [docs/opencode-auto-receive.md](../../docs/opencode-auto-receive.md) for the
 mechanism.
+
+## 4d. Enable auto-receive on Codex (Codex only)
+On a **Codex** host (0.147 or newer) the plugin ships an inbox hook
+(`extensions/codex/inbox-hook.py`) that surfaces incoming messages into the live
+session. Codex has no way for an outside process to push into a session, so the
+hook rides its lifecycle events instead: waiting messages become context at
+`SessionStart` and `UserPromptSubmit`, and a message that lands mid-turn is
+delivered at `Stop` as a continuation prompt, which Codex treats as a new user
+message. Register the hooks once (idempotent, appends to
+`$CODEX_HOME/config.toml`):
+```
+python3 <plugin>/extensions/codex/install-hooks.py
+```
+Then relaunch Codex with this session's spool, since environment variables must
+be set before the process starts:
+```
+# add this user's spool to any already set, then start codex:
+AGENT_TALK_CODEX_SPOOLS="$(printf '%s%s' "${AGENT_TALK_CODEX_SPOOLS:+$AGENT_TALK_CODEX_SPOOLS:}" "<user>/inbox.ndjson")" codex
+```
+Codex skips hooks it has not been told to trust: the first session prints a
+review warning, and the user approves the three agent-talk entries once under
+`/hooks`. Tell them that step plainly, because auto-receive stays off until they
+do it. The `receive --follow` reader still writes the spool (delivery mode
+`auto`, step 7); the hook is what carries those lines into the session. With no
+`AGENT_TALK_CODEX_SPOOLS` set the hook exits immediately, so nothing changes for
+a user who has not opted in. An idle session with no turn running still does not
+wake on its own; messages surface at the next prompt or end of turn. See
+[docs/codex-auto-receive.md](../../docs/codex-auto-receive.md) for the mechanism.
 
 ## 5. The relay can change after init
 The relay is saved as this user's **default** (in the retalk store and in
