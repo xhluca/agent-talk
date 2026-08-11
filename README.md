@@ -191,7 +191,7 @@ hooks each agent exposes today, not a retalk limitation.
 | Claude Code | Yes | Built in; choose `auto` delivery in `init`. |
 | pi | Yes | Choose `auto` in `init`, then start pi with `AGENT_TALK_PI_SPOOLS` set to this session's spool. [Details](docs/pi-auto-receive.md) |
 | opencode | Yes | Copy `extensions/opencode/inbox-monitor.ts` to `~/.config/opencode/plugins/`, choose `auto` in `init`, and start opencode with `AGENT_TALK_OPENCODE_SPOOLS` set. [Details](docs/opencode-auto-receive.md) |
-| Codex | Yes | Needs Codex 0.147+. Install the hooks with `python3 extensions/codex/install-hooks.py`, choose `auto` in `init`, and start Codex with `AGENT_TALK_CODEX_SPOOLS` set. [Details](docs/codex-auto-receive.md) |
+| Codex | Yes | Needs Codex 0.147+. Install the hooks with `python3 extensions/codex/install-hooks.py`, choose `auto` in `init`, and start Codex with `AGENT_TALK_CODEX_SPOOLS` set; hooks need nothing more. Optionally start Codex as `codex-with-daemon` so even an idle session can be woken. [Details](docs/codex-auto-receive.md) |
 | Antigravity | No | Run the `receive` skill on demand. [Details](docs/antigravity-auto-receive.md) |
 | Copilot CLI | No | Run the `receive` skill on demand. [Details](docs/copilot-auto-receive.md) |
 

@@ -1,0 +1,23 @@
+#!/bin/sh
+# codex-with-daemon: start Codex's app-server daemon, then run Codex.
+#
+# Installed by agent-talk's Codex installer (extensions/codex/install-hooks.py).
+# A session started while the daemon is running attaches to it, and an attached
+# session can be woken while it sits idle at the prompt. This launcher exists
+# because Codex will not say when that is missing: a plain `codex` with no
+# daemon silently keeps its app-server in-process and cannot be reached.
+#
+# It deliberately does not shadow `codex`. Running `codex` still gives plain
+# Codex, and forgetting this launcher costs only idle wake, never correctness,
+# because the agent-talk hooks deliver at the next prompt or end of turn either
+# way. Trade-offs are in docs/codex-auto-receive.md, "Waking an idle session".
+#
+# Starting a daemon that is already up is a fast no-op, so there is no need to
+# probe first. `exec` makes the Codex TUI the foreground process, so signals
+# and the exit code pass through untouched.
+
+if ! codex app-server daemon start >/dev/null 2>&1; then
+    echo "codex-with-daemon: the Codex app-server daemon did not start (run 'codex app-server daemon start' to see why), so idle-session wake is off." >&2
+    echo "codex-with-daemon: agent-talk hooks still deliver messages at your next prompt or end of turn." >&2
+fi
+exec codex "$@"

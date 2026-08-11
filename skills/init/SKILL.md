@@ -426,11 +426,10 @@ mechanism.
 ## 4d. Enable auto-receive on Codex (Codex only)
 On a **Codex** host (0.147 or newer) the plugin ships an inbox hook
 (`extensions/codex/inbox-hook.py`) that surfaces incoming messages into the live
-session. Codex has no way for an outside process to push into a session, so the
-hook rides its lifecycle events instead: waiting messages become context at
-`SessionStart` and `UserPromptSubmit`, and a message that lands mid-turn is
-delivered at `Stop` as a continuation prompt, which Codex treats as a new user
-message. Register the hooks once (idempotent, appends to
+session. The hook rides Codex's lifecycle events: waiting messages become
+context at `SessionStart` and `UserPromptSubmit`, and a message that lands
+mid-turn is delivered at `Stop` as a continuation prompt, which Codex treats as
+a new user message. Register the hooks once (idempotent, appends to
 `$CODEX_HOME/config.toml`):
 ```
 python3 <plugin>/extensions/codex/install-hooks.py
@@ -450,6 +449,15 @@ do it. The `receive --follow` reader still writes the spool (delivery mode
 a user who has not opted in. An idle session with no turn running still does not
 wake on its own; messages surface at the next prompt or end of turn. See
 [docs/codex-auto-receive.md](../../docs/codex-auto-receive.md) for the mechanism.
+
+Optional extra, off by default: the installer also puts a `codex-with-daemon`
+launcher in `~/.local/bin`. A session started with it (in place of plain
+`codex`) attaches to Codex's app-server daemon and can then be woken while
+idle, but that path needs the standalone Codex install and carries real
+trade-offs, listed under "Waking an idle session" in the same doc. Do **not**
+switch the user to the launcher or start the daemon yourself; mention that it
+exists and let them decide. Plain `codex` remains the default and loses only
+idle wake, never message delivery.
 
 ## 5. The relay can change after init
 The relay is saved as this user's **default** (in the retalk store and in
