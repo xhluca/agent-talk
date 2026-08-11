@@ -34,9 +34,12 @@ a workaround.
 
 Cursors live in `<user>/sessions/.codex-hook-state.json`, keyed by spool path, so
 sessions sharing that directory keep separate read positions. Each entry records
-the byte offset consumed and the message ids already delivered, and it advances
-before a message is handed over, which is what keeps a `Stop` hook from reporting
-the same message on every turn and blocking forever.
+the byte offset consumed, a fingerprint of the spool's first bytes (so a spool
+truncated and refilled to the same length between runs is read from the start
+again instead of being treated as unchanged), and the message ids already
+delivered. The cursor advances before a message is handed over, which is what
+keeps a `Stop` hook from reporting the same message on every turn and blocking
+forever.
 
 ## Setup
 

@@ -24,11 +24,14 @@ unset the script exits silently, so installing the hooks does not change any
 session that has not opted in.
 
 Each spool has a cursor file (`<user>/.codex-hook-state.json`) holding the byte
-offset already consumed and the ids already delivered. The cursor is advanced
-BEFORE the message is handed to Codex, which matters most for the stop event: a
-hook that reported the same message twice would block every turn forever.
+offset already consumed, a fingerprint of the spool's first bytes so a spool
+that was truncated and refilled between runs is not mistaken for one that has
+not changed, and the ids already delivered. The cursor is advanced BEFORE the
+message is handed to Codex, which matters most for the stop event: a hook that
+reported the same message twice would block every turn forever.
 """
 
+import hashlib
 import json
 import os
 import sys
@@ -40,6 +43,7 @@ EVENTS = {
 }
 STATE_NAME = ".codex-hook-state.json"
 MAX_REMEMBERED_IDS = 500
+FINGERPRINT_BYTES = 256
 
 
 def spools():
@@ -65,14 +69,16 @@ def load_state(spool):
 def read_state(spool):
     entry = load_state(spool).get(os.path.abspath(spool))
     if not isinstance(entry, dict):
-        return 0, []
-    return int(entry.get("offset", 0)), list(entry.get("ids", []))
+        return 0, [], "", 0
+    return (int(entry.get("offset", 0)), list(entry.get("ids", [])),
+            str(entry.get("sha", "")), int(entry.get("sha_len", 0)))
 
 
-def write_state(spool, offset, ids):
+def write_state(spool, offset, ids, sha, sha_len):
     data = load_state(spool)
     data[os.path.abspath(spool)] = {"offset": offset,
-                                    "ids": ids[-MAX_REMEMBERED_IDS:]}
+                                    "ids": ids[-MAX_REMEMBERED_IDS:],
+                                    "sha": sha, "sha_len": sha_len}
     tmp = state_path(spool) + ".tmp"
     try:
         with open(tmp, "w") as fh:
@@ -84,31 +90,41 @@ def write_state(spool, offset, ids):
 
 def drain(spool):
     """Return the messages appended since the last run, advancing the cursor."""
-    try:
-        size = os.path.getsize(spool)
-    except OSError:
-        return []
-    offset, seen = read_state(spool)
-    if size < offset:
-        offset = 0  # spool was truncated or rotated, start over
-    if size == offset:
-        return []
+    offset, seen, sha, sha_len = read_state(spool)
     try:
         with open(spool, "rb") as fh:
+            size = os.fstat(fh.fileno()).st_size
+            if size < offset:
+                offset = 0  # spool shrank: it was truncated or rotated
+            elif offset and sha:
+                fh.seek(0)
+                if hashlib.sha256(fh.read(sha_len)).hexdigest() != sha:
+                    # The spool was truncated and refilled to at least its old
+                    # length between two runs, so the size alone looks fine but
+                    # the offset points into different content. Start over; the
+                    # delivered-id list keeps old messages from repeating.
+                    offset = 0
+            if size == offset:
+                return []
             fh.seek(offset)
             chunk = fh.read()
+
+            # Keep a partial trailing line for the next run: the follower may
+            # be mid-write, and half a JSON record is not a message.
+            consumed = len(chunk)
+            if chunk and not chunk.endswith(b"\n"):
+                cut = chunk.rfind(b"\n")
+                if cut == -1:
+                    return []
+                consumed = cut + 1
+                chunk = chunk[:consumed]
+
+            # Fingerprint the first bytes of the file as it is now, so the
+            # next run can tell a truncate-and-refill apart from an append.
+            fh.seek(0)
+            prefix = fh.read(min(offset + consumed, FINGERPRINT_BYTES))
     except OSError:
         return []
-
-    # Keep a partial trailing line for the next run: the follower may be
-    # mid-write, and half a JSON record is not a message.
-    consumed = len(chunk)
-    if chunk and not chunk.endswith(b"\n"):
-        cut = chunk.rfind(b"\n")
-        if cut == -1:
-            return []
-        consumed = cut + 1
-        chunk = chunk[:consumed]
 
     fresh, ids = [], list(seen)
     for line in chunk.decode("utf-8", "replace").splitlines():
@@ -131,7 +147,8 @@ def drain(spool):
             ids.append(mid)
         fresh.append({"name": record.get("name") or record.get("from") or "peer",
                       "text": text})
-    write_state(spool, offset + consumed, ids)
+    write_state(spool, offset + consumed, ids,
+                hashlib.sha256(prefix).hexdigest(), len(prefix))
     return fresh
 
 
