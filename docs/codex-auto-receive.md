@@ -14,11 +14,16 @@ delivery feel automatic. A `Stop` hook that returns `{"decision": "block",
 user message, so a peer's message that lands while the agent is working is
 handled as soon as the current turn ends, with nothing typed by you.
 
-One case is still not covered. A session sitting idle at the prompt, with no
-turn running and nobody typing, does not wake on its own. The message waits in
-the spool and surfaces at the next prompt or the next end of turn. Earlier
-versions of Codex covered none of these cases, so this is a change in kind, not
-a workaround.
+Hooks alone leave one case open. A session sitting idle at the prompt, with no
+turn running and nobody typing, does not wake on its own, because a hook is
+something the session calls rather than something that can call the session.
+The message waits in the spool and surfaces at the next prompt or the next end
+of turn.
+
+That last case can be closed as well, at the cost of some setup: with Codex's
+local app-server daemon running, an outside process can push a turn into an
+idle session directly. See [Waking an idle session](#waking-an-idle-session)
+below. Hooks remain the default because they need no setup at all.
 
 ## How it works
 
@@ -78,24 +83,53 @@ Tested end to end against Codex 0.147 with a live relay and two real identities:
   ended. The session log shows `hook: Stop Blocked`, followed by the agent
   quoting the peer's message and acting on it, with no user input in between.
 
+## Waking an idle session
+
+A session started while Codex's local app-server daemon is running attaches to
+that daemon, and anything that can reach the daemon's control socket can then
+start a turn in it. That is enough to wake a session sitting idle at the prompt.
+Verified on 0.147 in a container: with the daemon up, an ordinary `codex` TUI
+left idle appeared in `thread/loaded/list`, and a `turn/start` call put text
+into that live pane and got an answer, with nobody touching the keyboard.
+`turn/steer` does the same during a turn that is already running.
+
+What it costs:
+
+- The standalone Codex install, `curl -fsSL https://chatgpt.com/codex/install.sh | sh`.
+  The daemon starts app-server from that fixed path and will not run on the npm
+  package alone. An existing npm-installed `codex` can stay: it attaches to the
+  daemon like any other session.
+- `ps` on PATH (`procps`), or the daemon fails to start.
+- `codex app-server daemon start`, run **before** `codex`. The daemon is a
+  long-running process, so this is once per machine boot rather than once per
+  session, but a session started before the daemon exists never attaches, and no
+  flag makes it join later.
+- Nothing else. Remote control and pairing are not involved; this worked with
+  remote control disabled.
+
+Two things to weigh before turning it on. A pushed turn arrives as a genuine
+user turn, so the agent acts on it rather than merely displaying it, which means
+a peer's message carries the authority of something you typed: deliver it
+wrapped so it plainly reads as third-party text. And any process that can open
+the daemon's socket can drive your session, which is a wider door than the hook
+path opens.
+
 ## What does not work, and why
 
-- **Waking an idle session.** Nothing outside the session can push into it. A
-  normally started Codex session runs its app-server in-process over anonymous
-  socket pairs, so it has no listening endpoint for another process to connect
-  to. We re-confirmed this on 0.147 by inspecting a live session's open sockets.
-- **The app-server protocol.** `turn/start` and `turn/steer` exist and do inject
-  turns, but only into threads the app-server itself owns, which is how the IDE
-  extension and desktop app drive their sessions. A separate app-server process
-  has its own conversation store, so injecting there does not reach your terminal
-  session.
-- **The managed daemon and remote control.** `codex app-server daemon` and
-  `codex remote-control` require the standalone install produced by the Codex
-  installer, and refuse to start on the npm package. They also drive daemon-owned
-  threads rather than your interactive session.
+- **Waking a session that has no daemon.** A Codex session started with no
+  daemon running keeps its app-server in-process over anonymous socket pairs,
+  with no listening endpoint at all, so nothing outside can reach it. Confirmed
+  on 0.147 by inspecting a live session's open sockets.
+- **Attaching a session after the fact.** A session already running when the
+  daemon starts does not join it, and there is no documented flag to make it.
+- **Hooks, for the idle case.** A hook is a process the session spawns at one of
+  its own lifecycle events, so when the session is idle no hook code is running
+  at all. Hooks can only continue a turn, never start one, and the `async`
+  option that might have allowed a background waiter is, in Codex's own schema,
+  parsed but not implemented.
 - **MCP notifications.** The `toSession` notification from
   [issue #15299](https://github.com/openai/codex/issues/15299) is still not in a
-  released Codex. It would cover the idle case; hooks do not.
+  released Codex. It would cover the idle case without a daemon.
 
 ## References
 
