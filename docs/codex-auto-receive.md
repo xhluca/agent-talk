@@ -20,12 +20,12 @@ something the session calls rather than something that can call the session.
 The message waits in the spool and surfaces at the next prompt or the next end
 of turn.
 
-That last case can be closed as well, at the cost of some setup: with Codex's
-local app-server daemon running, an outside process can push a turn into an
-idle session directly. The installer ships a `codex-with-daemon` launcher for
-exactly this; see [Waking an idle session](#waking-an-idle-session) below.
-Hooks remain the default because they need nothing beyond the installer, and
-the launcher stays opt-in.
+That last case can be closed as well, at the cost of some setup. Start the
+session through the `codex-with-daemon` launcher and the follower's spool
+writer with `--wake-codex`, and an incoming message wakes the idle session on
+its own; see [Waking an idle session](#waking-an-idle-session) below. Hooks
+remain the default because they need nothing beyond the installer, and waking
+stays opt-in.
 
 ## How it works
 
@@ -38,6 +38,10 @@ the launcher stays opt-in.
    spool since it last ran and hands them to Codex, as extra context for the
    `SessionStart` and `UserPromptSubmit` events, and as a continuation prompt for
    `Stop`.
+3. Optionally, the wake caller. Started with `--wake-codex`, the spool writer
+   also nudges an idle daemon-attached session after each record lands
+   (`bin/codex_wake.py`), so the hook path above runs right away instead of at
+   the next prompt. Details in [Waking an idle session](#waking-an-idle-session).
 
 Cursors live in `<user>/sessions/.codex-hook-state.json`, keyed by spool path, so
 sessions sharing that directory keep separate read positions. Each entry records
@@ -89,83 +93,103 @@ Tested end to end against Codex 0.147 with a live relay and two real identities:
 - A message sent six seconds into a running turn was delivered when that turn
   ended. The session log shows `hook: Stop Blocked`, followed by the agent
   quoting the peer's message and acting on it, with no user input in between.
+- With the session started through `codex-with-daemon` and the writer running
+  with `--wake-codex`: a session left fully idle, with nothing ever typed,
+  woke on its own when the peer's message arrived. The pane shows the injected
+  nudge turn, then the agent quoting the message verbatim and acting on it.
+- With no daemon (plain `codex`) and the same `--wake-codex` writer: nothing
+  was pushed, nothing was printed, and the message arrived by hook at the next
+  typed prompt.
 
 ## Waking an idle session
 
-This part is opt-in. Everything above works with nothing more than the
-installer; what follows closes the one remaining gap, the session sitting idle
-at the prompt, and costs real setup to do it.
+`codex-with-daemon` is a launcher, installed to `~/.local/bin` by the
+installer, that starts Codex's local app-server daemon and then runs `codex`
+attached to it. Use it when you want incoming messages to reach a Codex
+session that is sitting idle at the prompt; plain `codex` is fine otherwise,
+and hooks still deliver at your next prompt or the end of your next turn.
 
-A session started while Codex's local app-server daemon is running attaches to
-that daemon, and anything that can reach the daemon's control socket can then
-start a turn in it. That is enough to wake a session sitting idle at the prompt.
-Verified on 0.147 in a container: with the daemon up, an ordinary `codex` TUI
-left idle appeared in `thread/loaded/list`, and a `turn/start` call put text
-into that live pane and got an answer, with nobody touching the keyboard.
-`turn/steer` does the same during a turn that is already running.
+Two steps turn waking on:
 
-One honest caveat first: agent-talk does not place that `turn/start` call yet.
-The launcher below is the setup half, making the session reachable; the
-follower-side caller is planned but not built. Until it lands, this section
-buys you a session that outside tooling can wake, not one that agent-talk
-already wakes.
+1. Start Codex through the launcher, with `AGENT_TALK_CODEX_SPOOLS` set as
+   usual: `codex-with-daemon` in place of `codex`.
+2. Start the follower's spool writer with `--wake-codex` (the receive skill
+   does this when you say you use the launcher).
 
-### The launcher
+Both are deliberate choices. The launcher does not shadow `codex`, and the
+writer never touches the daemon's socket without the flag, so a user who
+adopted neither sees no change at all. Forgetting either costs only idle
+wake, never delivery.
 
-The installer puts a small POSIX shell launcher, `codex-with-daemon`, in
-`~/.local/bin`. It runs `codex app-server daemon start` and then execs `codex`
-with your arguments, so the TUI is the foreground process and signals and exit
-codes pass through. Starting a daemon that is already up is a fast no-op, so
-the launcher does not probe first. If the daemon cannot start, the launcher
-says so on stderr and starts plain Codex anyway; that session is not wakeable
-while idle, and the hooks still deliver at the next prompt or end of turn.
+### How the wake works
 
-The launcher deliberately does not shadow `codex`. Running `codex` gives you
-plain Codex, and forgetting the launcher costs only idle wake, never
-correctness. The distinct name matters because Codex will not tell you when
-the daemon is missing: a session started without one silently keeps its
-app-server in-process and simply cannot be reached, with nothing on screen to
-say so.
+When the writer appends a message to a session spool and `--wake-codex` is
+set, it connects to the daemon's control socket and starts a turn in the one
+loaded thread, carrying only a fixed nudge: new mail arrived, surface what
+the inbox hook attaches. The message body is never pushed. An injected turn
+arrives with the authority of something you typed, so peer-controlled text
+must not travel that way; and because the body still comes from the hook,
+there is a single delivery path with a single dedupe cursor, whether the
+session was woken, prompted, or mid-turn.
+
+The attempt is best-effort and bounded by a short deadline. No socket, no
+daemon, a refused handshake, or a method error all end it silently; the
+message is already in the spool and the hooks still deliver it. The writer
+also does not stack nudges: while a nudged message sits unread (the hook
+cursor has not moved past the point of the last nudge), further messages add
+no further nudges, and a spool that is drained or rotated re-arms it. A
+session with a turn already running is left alone, because the `Stop` hook
+delivers the moment that turn ends; interrupting real work with `turn/steer`
+to say "check your inbox" would buy nothing.
 
 ### What it costs
 
-- The standalone Codex install, `curl -fsSL https://chatgpt.com/codex/install.sh | sh`.
-  The daemon starts app-server from that fixed path and will not run on the npm
-  package alone. An existing npm-installed `codex` can stay: it attaches to the
-  daemon like any other session.
-- `ps` on PATH (`procps`), or the daemon fails to start.
-- The daemon must be running **before** the session starts. A session started
-  earlier never attaches, and no flag makes it join later. `codex-with-daemon`
-  covers this by starting the daemon on the way in.
-- Nothing survives a reboot. The daemon leaves only pid files, locks, logs,
-  and a socket under `$CODEX_HOME`: no systemd unit, no launchd job, no cron
-  entry, no shell profile edit. Nothing respawns it if it dies, either. Using
-  the launcher for every session is the simple answer; if you want the daemon
-  up from boot instead, that arrangement (a user systemd unit, for example) is
-  yours to make.
-- Nothing else. Remote control is not needed: it is the same daemon started
-  with `--remote-control` plus enrollment with OpenAI's cloud, it grants
-  nothing extra locally (the wake above worked with it disabled), and routing
-  messages through it would hand agent-talk plaintext to a third party, which
-  is the opposite of this project's point.
-
-### Why `daemon start` and not `bootstrap`
-
-Codex also offers `codex app-server daemon bootstrap`. Do not use it for this.
-Bootstrap starts the same daemon plus an hourly auto-updater that restarts the
-app-server whenever the binary changes, and every session attached to the
-daemon dies when the daemon restarts or stops. `daemon start` launches only
-the server, so your sessions live until you stop it yourself. Bootstrap is
-also not reboot-persistent, so it buys no durability in exchange.
+- The standalone Codex install
+  (`curl -fsSL https://chatgpt.com/codex/install.sh | sh`); the daemon will
+  not run from the npm package alone. `ps` on PATH (`procps`) as well.
+- The daemon must be up before the session starts; the launcher does that.
+  A session started with no daemon silently keeps its app-server in-process
+  and cannot be reached, with nothing on screen to say so.
+- Nothing survives a reboot, and nothing respawns a dead daemon. Using the
+  launcher for every session is the simple answer; a boot-time arrangement
+  (a user systemd unit, say) is yours to make.
+- A daemon restart or stop kills every attached session. This is why the
+  launcher uses `daemon start` and not `daemon bootstrap`: bootstrap adds an
+  auto-updater that restarts the app-server whenever the binary changes,
+  killing your sessions for no durability in return.
+- Remote control is not needed. It is the same daemon plus enrollment with
+  OpenAI's cloud, it grants nothing extra locally, and routing messages
+  through it would hand agent-talk plaintext to a third party.
 
 ### What to weigh
 
-Two risks to accept before turning this on. First, a pushed turn arrives as a
-genuine user turn, so the agent acts on it rather than merely displaying it,
-which means a peer's message carries the authority of something you typed;
-anything delivered this way must be wrapped so it plainly reads as third-party
-text. Second, any local process that can open the daemon's socket can drive
-your session, which is a wider door than the hook path opens.
+- A pushed turn arrives as a genuine user turn, so the agent acts on it with
+  the authority of something you typed. agent-talk pushes only its fixed
+  nudge for exactly this reason, but the capability itself is why waking is
+  opt-in.
+- Any local process that can open the daemon's socket can drive your
+  session, which is a wider door than the hook path opens.
+
+### Limits, honestly
+
+- **One session per daemon is the supported shape.** Thread ids on the
+  daemon are Codex's, and nothing maps them to agent-talk sessions, so the
+  writer only wakes when exactly one thread is loaded. With several attached
+  sessions it stands down rather than risk injecting into the wrong one, and
+  messages fall back to hook delivery.
+- **The daemon keeps the environment it started with.** Attached sessions
+  run their hooks inside the daemon, so `AGENT_TALK_CODEX_SPOOLS` must be
+  set when the daemon first starts; the launcher passes its environment
+  through, and warns when a daemon that is already running may hold a stale
+  value. Changing the spool list means restarting the daemon, which ends its
+  attached sessions.
+- **Attached sessions work in the daemon's directory.** On 0.147 a session
+  started with `--remote` takes its working directory from the daemon, not
+  from where you launched the TUI. Start `codex-with-daemon` from the
+  project directory the daemon should serve.
+- **Hook trust must be granted for real.** For attached sessions,
+  `--dangerously-bypass-hook-trust` on the TUI does not arm the hooks;
+  review and trust them once under `/hooks` (press `t`).
 
 ## What does not work, and why
 

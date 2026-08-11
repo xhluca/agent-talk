@@ -28,6 +28,14 @@ written to every session whose map entry points at this user.
 `--legacy` (on by default for one release) also appends to the old
 `<user>/inbox.ndjson`, so a consumer still reading that path keeps working
 during the transition. Pass `--no-legacy` to stop writing it.
+
+`--wake-codex` (off by default) additionally tries, after each record lands,
+to wake an idle Codex session through the app-server daemon's control socket,
+so the session handles the mail instead of waiting for the next prompt. The
+attempt is best-effort and pushes only a generic nudge, never the message
+body; see bin/codex_wake.py and docs/codex-auto-receive.md. It is a flag
+rather than automatic on socket presence because injecting turns is a real
+capability: the user opts in once, in the command they can read.
 """
 
 import argparse
@@ -38,6 +46,11 @@ import os
 import shutil
 import sys
 import time
+
+try:
+    import codex_wake                    # sibling module; used by --wake-codex
+except ImportError:                      # tolerated until the flag asks for it
+    codex_wake = None
 
 DEFAULT_MAX_BYTES = 8 * 1024 * 1024      # rotate a spool past this size
 DEFAULT_MAX_AGE_DAYS = 14                # sweep spools untouched for this long
@@ -132,11 +145,16 @@ def stream(args):
         now = time.monotonic()
         if now - checked_at > 5:          # re-read the registry at most every 5s
             known, checked_at = registered_sessions(user_dir), now
-        for sid in known:
-            append(os.path.join(sessions_dir(user_dir), sid + ".ndjson"),
-                   line, args.max_bytes)
+        spools = [os.path.join(sessions_dir(user_dir), sid + ".ndjson")
+                  for sid in known]
+        for spool in spools:
+            append(spool, line, args.max_bytes)
         if args.legacy:
             append(os.path.join(user_dir, "inbox.ndjson"), line, args.max_bytes)
+        if args.wake_codex and spools:
+            # After the record is safely in the spool; a failed wake costs
+            # nothing but the bounded attempt, and hooks still deliver.
+            codex_wake.maybe_wake(user_dir, spools)
         sys.stdout.flush()
     return 0
 
@@ -189,12 +207,20 @@ def main():
                     help="also append to the old <user>/inbox.ndjson (default)")
     ap.add_argument("--no-legacy", dest="legacy", action="store_false",
                     help="stop writing the old <user>/inbox.ndjson")
+    ap.add_argument("--wake-codex", dest="wake_codex", action="store_true",
+                    help="after each record, best-effort wake an idle Codex "
+                         "session through the app-server daemon (opt-in; see "
+                         "docs/codex-auto-receive.md)")
     ap.add_argument("--max-bytes", type=int, default=DEFAULT_MAX_BYTES,
                     help="rotate a spool once it passes this size (0 disables)")
     ap.add_argument("--max-age-days", type=int, default=DEFAULT_MAX_AGE_DAYS,
                     help="with --gc, also sweep spools untouched this long")
     args = ap.parse_args()
     args.user = os.path.abspath(os.path.expanduser(args.user))
+    if args.wake_codex and codex_wake is None:
+        print("--wake-codex needs codex_wake.py next to this script",
+              file=sys.stderr)
+        return 2
     return gc(args) if args.gc else stream(args)
 
 

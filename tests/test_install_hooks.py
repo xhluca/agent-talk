@@ -2,9 +2,10 @@
 
 `install-hooks.py` appends the marked hook block to `$CODEX_HOME/config.toml`
 and copies the `codex-with-daemon` launcher to `~/.local/bin`. The launcher
-starts Codex's app-server daemon and then execs `codex`; when the daemon
-cannot start it must say so and run plain Codex anyway, because losing idle
-wake must never cost a working session.
+starts Codex's app-server daemon and then execs `codex --remote unix://` so
+the session attaches to it; when the daemon cannot start it must say so and
+run plain Codex anyway, because losing idle wake must never cost a working
+session.
 
 Asserts:
   1. A fresh install writes the hook block and an executable launcher, and
@@ -14,10 +15,14 @@ Asserts:
      0 and reports both installed after, and never writes anything.
   4. The installer warns when the launcher directory is not on PATH, and only
      then.
-  5. The launcher warns on stderr and still execs codex, arguments intact,
-     when the daemon fails to start.
-  6. The launcher adds no output of its own when the daemon starts cleanly.
+  5. The launcher warns on stderr and still execs plain codex, arguments
+     intact and no --remote, when the daemon fails to start.
+  6. The launcher attaches with --remote unix:// and adds no output of its
+     own when the daemon starts cleanly.
   7. With no codex on PATH the launcher warns and exits 127.
+  8. A daemon that was already running gets a stderr note exactly when
+     AGENT_TALK_CODEX_SPOOLS is set, because the daemon keeps the environment
+     it started with; the session still attaches.
 """
 
 import os
@@ -111,42 +116,51 @@ class TestLauncher(unittest.TestCase):
         self.bin = os.path.join(self.tmp.name, "bin")
         os.makedirs(self.bin)
 
-    def stub_codex(self, daemon_exit):
-        """A fake codex: `codex app-server ...` exits daemon_exit, anything
-        else echoes its arguments so the test can see the exec happened."""
+    def stub_codex(self, daemon_status):
+        """A fake codex: `codex app-server ...` prints the daemon status JSON
+        (or an error), anything else echoes its arguments so the test can see
+        the exec happened. The real `daemon start` exits 0 either way it
+        succeeds, so the launcher must read the status, not the exit code."""
         path = os.path.join(self.bin, "codex")
         with open(path, "w") as fh:
             fh.write('#!/bin/sh\n'
-                     'if [ "$1" = "app-server" ]; then exit %d; fi\n'
-                     'echo "codex-ran $@"\n' % daemon_exit)
+                     'if [ "$1" = "app-server" ]; then echo \'%s\'; exit 0; fi\n'
+                     'echo "codex-ran $@"\n' % daemon_status)
         os.chmod(path, 0o755)
 
-    def run_launcher(self, *args):
+    def run_launcher(self, *args, spools=None):
+        env = dict(os.environ, PATH=self.bin)
+        env.pop("AGENT_TALK_CODEX_SPOOLS", None)
+        if spools is not None:
+            env["AGENT_TALK_CODEX_SPOOLS"] = spools
         return subprocess.run(["/bin/sh", LAUNCHER_SRC, *args],
-                              capture_output=True, text=True,
-                              env=dict(os.environ, PATH=self.bin))
+                              capture_output=True, text=True, env=env)
 
     def test_daemon_failure_warns_and_still_runs_codex(self):
-        self.stub_codex(daemon_exit=1)
+        self.stub_codex('{"error":"no standalone install"}')
         res = self.run_launcher("resume", "--last")
         self.assertEqual(res.returncode, 0, res.stderr)
         self.assertIn("codex-ran resume --last", res.stdout,
                       "codex must still run, arguments intact")
+        self.assertNotIn("--remote", res.stdout,
+                         "with no daemon there is nothing to attach to")
         err = res.stderr.splitlines()
         self.assertEqual(len(err), 2, res.stderr)
         self.assertIn("daemon", err[0])
         self.assertIn("idle-session wake is off", err[0])
         self.assertIn("next prompt", err[1])
         print("PASS 5: a failed daemon start warns twice on stderr and "
-              "still runs codex")
+              "still runs plain codex")
 
-    def test_daemon_success_adds_no_output(self):
-        self.stub_codex(daemon_exit=0)
+    def test_daemon_success_attaches_quietly(self):
+        self.stub_codex('{"status":"started","backend":"pid"}')
         res = self.run_launcher("--version")
         self.assertEqual(res.returncode, 0, res.stderr)
-        self.assertIn("codex-ran --version", res.stdout)
+        self.assertIn("codex-ran --remote unix:// --version", res.stdout,
+                      "the session must attach to the daemon it started")
         self.assertEqual(res.stderr, "")
-        print("PASS 6: a clean daemon start adds no output of its own")
+        print("PASS 6: a clean daemon start attaches with --remote and "
+              "adds no output of its own")
 
     def test_missing_codex_warns_and_exits_127(self):
         res = self.run_launcher()
@@ -155,6 +169,21 @@ class TestLauncher(unittest.TestCase):
         self.assertIn("next prompt", res.stderr)
         print("PASS 7: with no codex on PATH the launcher warns and "
               "exits 127")
+
+    def test_already_running_notes_stale_environment(self):
+        self.stub_codex('{"status":"alreadyRunning","backend":"pid"}')
+        res = self.run_launcher("--version", spools="/tmp/spool.ndjson")
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertIn("codex-ran --remote unix:// --version", res.stdout)
+        self.assertIn("environment it started with", res.stderr,
+                      "a running daemon cannot pick up a new spool list")
+
+        res = self.run_launcher("--version")
+        self.assertEqual(res.stderr, "",
+                         "without spools set there is nothing to note")
+        self.assertIn("codex-ran --remote unix:// --version", res.stdout)
+        print("PASS 8: an already-running daemon is noted exactly when "
+              "AGENT_TALK_CODEX_SPOOLS is set")
 
 
 if __name__ == "__main__":

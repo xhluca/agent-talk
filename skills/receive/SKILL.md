@@ -169,6 +169,13 @@ fi
   The writer keeps writing the older `<user>/inbox.ndjson` as well, so a consumer
   still pointed at that path keeps working; add `--no-legacy` once nothing reads
   it.
+- **Codex + `codex-with-daemon` only:** if the user starts their Codex sessions
+  through the `codex-with-daemon` launcher (so idle sessions can be woken, see
+  init step 4d), append `--wake-codex` to the spool-writer command above. Each
+  delivered message then also nudges the idle session awake, best-effort and
+  silent when no daemon is reachable. Do not add the flag otherwise; hooks
+  alone deliver at the next prompt or end of turn, and waking is the user's
+  opt-in.
 - For a rapid live exchange, restart with a smaller `--interval` (e.g. 5); 60
   is the calm default for all-session listening.
 - retalk older than 0.2.0 has none of these flags: drop `--interval`/`--quiet`

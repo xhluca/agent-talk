@@ -1,23 +1,39 @@
 #!/bin/sh
-# codex-with-daemon: start Codex's app-server daemon, then run Codex.
+# codex-with-daemon: start Codex's app-server daemon, then run Codex attached
+# to it (`--remote unix://`), so the session can be woken while it sits idle.
 #
 # Installed by agent-talk's Codex installer (extensions/codex/install-hooks.py).
-# A session started while the daemon is running attaches to it, and an attached
-# session can be woken while it sits idle at the prompt. This launcher exists
-# because Codex will not say when that is missing: a plain `codex` with no
-# daemon silently keeps its app-server in-process and cannot be reached.
+# Attaching is not automatic: a plain `codex` keeps its app-server in-process
+# and cannot be reached, with nothing on screen to say so. This launcher does
+# both halves in one step. The spool writer's --wake-codex flag is what then
+# places the wake call; see docs/codex-auto-receive.md.
+#
+# Two environment facts matter here. The daemon inherits this launcher's
+# environment, and the inbox hooks of attached sessions run inside the daemon,
+# so AGENT_TALK_CODEX_SPOOLS must be set before the daemon first starts. And a
+# daemon that is already running keeps the environment it started with, which
+# is why the launcher says so instead of restarting it: a daemon restart kills
+# every attached session.
 #
 # It deliberately does not shadow `codex`. Running `codex` still gives plain
 # Codex, and forgetting this launcher costs only idle wake, never correctness,
 # because the agent-talk hooks deliver at the next prompt or end of turn either
-# way. Trade-offs are in docs/codex-auto-receive.md, "Waking an idle session".
-#
-# Starting a daemon that is already up is a fast no-op, so there is no need to
-# probe first. `exec` makes the Codex TUI the foreground process, so signals
-# and the exit code pass through untouched.
+# way. `exec` makes the Codex TUI the foreground process, so signals and the
+# exit code pass through untouched.
 
-if ! codex app-server daemon start >/dev/null 2>&1; then
+out=$(codex app-server daemon start 2>&1)
+case "$out" in
+*'"status":"started"'*)
+    ;;
+*'"status":"alreadyRunning"'*)
+    if [ -n "${AGENT_TALK_CODEX_SPOOLS:-}" ]; then
+        echo "codex-with-daemon: the daemon was already running and keeps the environment it started with; if AGENT_TALK_CODEX_SPOOLS changed since then, message delivery uses the old value until the daemon is restarted (which ends its attached sessions)." >&2
+    fi
+    ;;
+*)
     echo "codex-with-daemon: the Codex app-server daemon did not start (run 'codex app-server daemon start' to see why), so idle-session wake is off." >&2
     echo "codex-with-daemon: agent-talk hooks still deliver messages at your next prompt or end of turn." >&2
-fi
-exec codex "$@"
+    exec codex "$@"
+    ;;
+esac
+exec codex --remote unix:// "$@"

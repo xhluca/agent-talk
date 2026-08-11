@@ -446,18 +446,22 @@ review warning, and the user approves the three agent-talk entries once under
 do it. The `receive --follow` reader still writes the spool (delivery mode
 `auto`, step 7); the hook is what carries those lines into the session. With no
 `AGENT_TALK_CODEX_SPOOLS` set the hook exits immediately, so nothing changes for
-a user who has not opted in. An idle session with no turn running still does not
-wake on its own; messages surface at the next prompt or end of turn. See
-[docs/codex-auto-receive.md](../../docs/codex-auto-receive.md) for the mechanism.
+a user who has not opted in. With hooks alone, an idle session with no turn
+running does not wake on its own; messages surface at the next prompt or end of
+turn. See [docs/codex-auto-receive.md](../../docs/codex-auto-receive.md) for
+the mechanism.
 
-Optional extra, off by default: the installer also puts a `codex-with-daemon`
-launcher in `~/.local/bin`. A session started with it (in place of plain
-`codex`) attaches to Codex's app-server daemon and can then be woken while
-idle, but that path needs the standalone Codex install and carries real
-trade-offs, listed under "Waking an idle session" in the same doc. Do **not**
-switch the user to the launcher or start the daemon yourself; mention that it
-exists and let them decide. Plain `codex` remains the default and loses only
-idle wake, never message delivery.
+Optional extra, off by default: `codex-with-daemon`, also installed by the
+installer, is a launcher that starts Codex's app-server daemon and runs `codex`
+attached to it. It is for one thing: making messages reach a Codex session that
+is sitting idle at the prompt. A user who wants that starts sessions with
+`codex-with-daemon` in place of `codex` (same arguments, spool variable set the
+same way) and has the follower's spool writer run with `--wake-codex` (receive
+skill). It needs the standalone Codex install, and carries trade-offs listed
+under "Waking an idle session" in the same doc. Do **not** switch the user to
+the launcher or start the daemon yourself; mention that it exists and let them
+decide. Plain `codex` remains the default and loses only idle wake, never
+message delivery.
 
 ## 5. The relay can change after init
 The relay is saved as this user's **default** (in the retalk store and in
