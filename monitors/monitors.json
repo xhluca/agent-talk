@@ -4,5 +4,11 @@
     "command": "${CLAUDE_PLUGIN_ROOT}/bin/inbox-monitor.sh ${CLAUDE_SESSION_ID}",
     "description": "Pushes this session's incoming retalk messages into the session as they arrive (per-user, resolved via the session->user map that init writes). Run `receive follow <peer>` to start the follower that feeds the spool.",
     "when": "always"
+  },
+  {
+    "name": "retalk-requests",
+    "command": "${CLAUDE_PLUGIN_ROOT}/bin/requests-monitor.sh ${CLAUDE_SESSION_ID}",
+    "description": "Pushes this session's incoming contact requests into the session as they arrive: peers who presented one of this identity's invite codes and were registered as contacts. Run the invite watcher from the `id` skill to start the follower that feeds the request spool.",
+    "when": "always"
   }
 ]

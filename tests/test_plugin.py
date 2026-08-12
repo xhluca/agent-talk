@@ -21,6 +21,13 @@ class TestManifests(unittest.TestCase):
     def test_monitors_json(self):
         m = json.loads(pathlib.Path(ROOT, "monitors", "monitors.json").read_text())
         self.assertTrue(any(x.get("name") == "retalk-inbox" for x in m))
+        # Contact requests ride a second monitor, not the inbox one.
+        self.assertTrue(any(x.get("name") == "retalk-requests" for x in m))
+        for entry in m:
+            script = entry["command"].split()[0].replace(
+                "${CLAUDE_PLUGIN_ROOT}", ROOT)
+            self.assertTrue(os.access(script, os.X_OK),
+                            f"{entry['name']}: {script} is not executable")
 
 
 class TestSkills(unittest.TestCase):

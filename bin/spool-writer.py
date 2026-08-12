@@ -36,6 +36,15 @@ attempt is best-effort and pushes only a generic nudge, never the message
 body; see bin/codex_wake.py and docs/codex-auto-receive.md. It is a flag
 rather than automatic on socket presence because injecting turns is a real
 capability: the user opts in once, in the command they can read.
+
+`--stream` picks which spool the records land in. `messages` (the default) is
+the inbox described above. `requests` is the separate stream for contact
+requests: peers who presented one of this identity's invite codes and were
+registered as contacts. Those records go to
+`<user>/sessions/<session-id>.requests.ndjson` and are never mixed into the
+message spool, because they are not conversation turns and a session that
+renders them as chat would be wrong. The requests stream has no legacy
+per-identity file; it is new, so nothing reads one.
 """
 
 import argparse
@@ -57,6 +66,10 @@ DEFAULT_MAX_AGE_DAYS = 14                # sweep spools untouched for this long
 SESSION_DIRNAME = "sessions"
 REGISTRY = os.path.join("~", ".agent-talk", "by-session")
 
+# Each stream gets its own spool suffix, so one session can carry both without
+# the two ever landing in the same file.
+STREAM_SUFFIX = {"messages": ".ndjson", "requests": ".requests.ndjson"}
+
 
 def registry_dir():
     return os.path.expanduser(REGISTRY)
@@ -64,6 +77,21 @@ def registry_dir():
 
 def sessions_dir(user_dir):
     return os.path.join(user_dir, SESSION_DIRNAME)
+
+
+def session_id_of(spool_name):
+    """The session id a spool file belongs to, for any stream.
+
+    Handles `<sid>.ndjson`, `<sid>.requests.ndjson`, and the `.1` rotation of
+    either. Returns "" for a name that is not a spool.
+    """
+    name = spool_name[:-2] if spool_name.endswith(".1") else spool_name
+    if not name.endswith(".ndjson"):
+        return ""
+    name = name[: -len(".ndjson")]
+    if name.endswith(".requests"):
+        name = name[: -len(".requests")]
+    return name
 
 
 def registered_sessions(user_dir):
@@ -135,6 +163,10 @@ def stamp(raw):
 
 def stream(args):
     user_dir = args.user
+    suffix = STREAM_SUFFIX[args.stream]
+    # Only the message stream has an older per-identity file; the requests
+    # stream is new, so there is no consumer to keep working.
+    legacy = args.legacy and args.stream == "messages"
     os.makedirs(sessions_dir(user_dir), exist_ok=True)
     known, checked_at = [], 0.0
     for raw in sys.stdin:
@@ -145,11 +177,11 @@ def stream(args):
         now = time.monotonic()
         if now - checked_at > 5:          # re-read the registry at most every 5s
             known, checked_at = registered_sessions(user_dir), now
-        spools = [os.path.join(sessions_dir(user_dir), sid + ".ndjson")
+        spools = [os.path.join(sessions_dir(user_dir), sid + suffix)
                   for sid in known]
         for spool in spools:
             append(spool, line, args.max_bytes)
-        if args.legacy:
+        if legacy:
             append(os.path.join(user_dir, "inbox.ndjson"), line, args.max_bytes)
         if args.wake_codex and spools:
             # After the record is safely in the spool; a failed wake costs
@@ -172,9 +204,9 @@ def gc(args):
             return 0
         return 1
     for name in entries:
-        if not name.endswith(".ndjson") and not name.endswith(".ndjson.1"):
+        sid = session_id_of(name)         # covers both streams and rotations
+        if not sid:
             continue
-        sid = name.split(".ndjson")[0]
         path = os.path.join(directory, name)
         try:
             untouched = os.path.getmtime(path) < cutoff
@@ -202,9 +234,16 @@ def main():
     ap.add_argument("--user", required=True,
                     help="the agent-talk user directory (holds identity/, sessions/)")
     ap.add_argument("--gc", action="store_true",
-                    help="sweep spools of sessions that are gone, then exit")
+                    help="sweep spools of sessions that are gone, then exit "
+                         "(both streams)")
+    ap.add_argument("--stream", choices=sorted(STREAM_SUFFIX),
+                    default="messages",
+                    help="which spool to fill: 'messages' (default, the inbox) "
+                         "or 'requests' (contact requests from peers who used "
+                         "an invite code)")
     ap.add_argument("--legacy", dest="legacy", action="store_true", default=True,
-                    help="also append to the old <user>/inbox.ndjson (default)")
+                    help="also append to the old <user>/inbox.ndjson (default; "
+                         "message stream only)")
     ap.add_argument("--no-legacy", dest="legacy", action="store_false",
                     help="stop writing the old <user>/inbox.ndjson")
     ap.add_argument("--wake-codex", dest="wake_codex", action="store_true",

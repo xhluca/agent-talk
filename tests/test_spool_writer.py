@@ -8,6 +8,10 @@ Asserts:
      with --no-legacy.
   4. --gc removes the spool of a session that is gone and keeps a live one.
   5. Spools are created 0600, since they hold decrypted message text.
+  6. --stream requests keeps contact requests in their own per-session spool,
+     out of the message spool and out of the legacy inbox.
+  7. --gc treats request spools like message spools: a live session keeps its
+     own, a session that is gone loses both.
 """
 
 import json
@@ -46,6 +50,10 @@ class TestSpoolWriter(unittest.TestCase):
 
     def spool(self, sid, user_dir=None):
         return os.path.join(user_dir or self.user, "sessions", sid + ".ndjson")
+
+    def request_spool(self, sid, user_dir=None):
+        return os.path.join(user_dir or self.user, "sessions",
+                            sid + ".requests.ndjson")
 
     def read(self, path):
         with open(path) as fh:
@@ -118,6 +126,43 @@ class TestSpoolWriter(unittest.TestCase):
         self.assertFalse(os.path.exists(cold),
                          "a spool untouched past --max-age-days should be swept")
         print("PASS 4b: --gc sweeps long-cold spools even if still registered")
+
+    def test_requests_go_to_their_own_spool(self):
+        # A contact request is a registration event, not a conversation turn,
+        # so it must never reach the inbox a session renders as chat.
+        self.register("s-one", self.user)
+        self.run_writer(
+            ['{"id":"r1","kind":"contact_request","from":"ff","name":"sam"}'],
+            "--stream", "requests")
+
+        got = self.read(self.request_spool("s-one"))
+        self.assertEqual([r["id"] for r in got], ["r1"])
+        self.assertIn("ts", got[0], "requests are stamped like messages")
+        self.assertFalse(os.path.exists(self.spool("s-one")),
+                         "a request must not land in the message spool")
+        self.assertFalse(os.path.exists(os.path.join(self.user, "inbox.ndjson")),
+                         "the requests stream has no legacy per-identity file")
+        mode = os.stat(self.request_spool("s-one")).st_mode & 0o777
+        self.assertEqual(mode, 0o600, f"spool mode {oct(mode)} should be 0600")
+        print("PASS 6: contact requests get their own 0600 per-session spool")
+
+    def test_gc_sweeps_request_spools_by_session_liveness(self):
+        self.register("s-live", self.user)
+        self.register("s-dead", self.user)
+        self.run_writer(['{"id":"r1","kind":"contact_request","from":"ff"}'],
+                        "--stream", "requests")
+        self.run_writer(['{"id":"m1","text":"hi"}'])
+        self.assertTrue(os.path.exists(self.request_spool("s-dead")))
+
+        os.remove(os.path.join(self.registry, "s-dead"))  # session ended
+        subprocess.run([sys.executable, WRITER, "--user", self.user, "--gc"],
+                       capture_output=True, text=True,
+                       env=dict(os.environ, HOME=self.home))
+        self.assertTrue(os.path.exists(self.request_spool("s-live")),
+                        "a live session's request spool must survive --gc")
+        self.assertFalse(os.path.exists(self.request_spool("s-dead")),
+                         "a gone session's request spool should be swept")
+        print("PASS 7: --gc reads the session id from either stream's spool")
 
 
 if __name__ == "__main__":
