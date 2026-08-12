@@ -204,10 +204,13 @@ retalk request <inviter-fingerprint> --code <code> --peer <name-to-save-them-as>
   nothing has arrived after a while so they can check the code off-band. Do set
   the inviter as `receive-from` and start the listener (**receive** skill) so
   their first message surfaces the moment it lands.
-- Failures are local and immediate: exit 2 for
+- Failures are local and immediate, and they all exit **2**: tell them apart by
+  what lands on stderr, not by the code. A one-line `[retalk] …` message means
+  the command was wrong and needs fixing, as in
   `[retalk] request needs --code CODE` or
-  `[retalk] an inviter is addressed by their 32-hex user id` (fix the command),
-  exit 1 for relay trouble (retry later). A `PIN MISMATCH` on the inviter's keys
+  `[retalk] an inviter is addressed by their 32-hex user id`. A
+  could-not-reach-the-relay block means the relay is unreachable, so retry
+  later rather than editing the command. A `PIN MISMATCH` on the inviter's keys
   means stop and tell the user: the relay returned keys that do not match the
   fingerprint in the invite.
 
