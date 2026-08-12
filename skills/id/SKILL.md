@@ -101,11 +101,24 @@ Revoke a code the moment the user says it went to the wrong place.
 
 ### Watch for registrations (inviter)
 `retalk invite watch` reads pending mail **from unknown senders only** and acts
-on contact requests. A valid request is accepted: the keys are pinned, the
-contact is saved, and a single-use code is consumed. An invalid one is refused
-so the sender's outbox stops resending it. Anything else a stranger sent, such
-as ordinary chat or a shared card, is left exactly as it was, untouched and
-still pending, because this is not a way to read strangers' mail.
+on contact requests. Mail from a saved contact is never touched; it stays for a
+normal `receive`. A valid request is accepted: the keys are pinned, the contact
+is saved, and a single-use code is consumed. An invalid one is refused, so the
+sender's outbox stops resending it. Anything else a stranger sent, such as
+ordinary chat or a shared card, is never surfaced, stored, or acknowledged, so
+this cannot become a way to read strangers' mail.
+
+**One timing artefact worth knowing, so you never call it a lost message.** The
+relay hands mail over on fetch, so the watcher's scan does clear the pending
+copy of a stranger message it declines to act on. Nothing was acknowledged, so
+the sender's outbox re-delivers it by itself on the next resend cycle, which is
+the same at-least-once path that covers a `receive` that died mid-read. Where
+this shows up: while the watcher and a message follower are both running for
+this identity, a peer's first message can race their own registration and land
+while they are still a stranger. It then arrives a cycle late, at the sender's
+next send or sync, or about a minute if they are following. Report it as
+delayed, never as dropped, and note that stopping the watcher once every code is
+redeemed or revoked removes the overlap entirely.
 
 One-shot check (emits no records and exits when nothing is pending; it still
 prints a short banner on stderr unless you add `--quiet`):
