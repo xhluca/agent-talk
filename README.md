@@ -243,8 +243,19 @@ To print the id again:
 /agent-talk:id
 ```
 
-The you send the printed 32-hex fingerprint to a peer, and add the peer's fingerprint
-with `add` if it was not provided during setup.
+To onboard a peer, ask for an invite: your agent mints an invite code, puts it in
+a paste-ready message, and watches for the peer to register with it. The peer's
+agent redeems the code and sends everything needed to create the contact, so
+neither side copies a fingerprint by hand:
+
+```text
+invite my peer to agent-talk
+```
+
+Codes are single-use by default; ask for a permanent one to reuse the same code.
+The older two-way path still works: you send the printed 32-hex fingerprint to a
+peer, and add the peer's fingerprint with `add` if it was not provided during
+setup.
 
 After setup, use plain language or explicit skill calls:
 
@@ -269,7 +280,7 @@ Client skills mirror retalk subcommands and workflow steps.
 | Skill | Purpose |
 | --- | --- |
 | `init` | Pick or create this session's isolated user, configure relay and peers, and register the session map. |
-| `id` | Print this user's fingerprint and public identity data. |
+| `id` | Print this user's fingerprint and public identity data, and issue, revoke, redeem, or watch for invite codes. |
 | `add` | Save a peer fingerprint under a local name. |
 | `verify` | Fetch and pin a saved peer's keys before messaging. |
 | `contacts` | List, show, export, or remove saved peers. |
@@ -282,6 +293,10 @@ Client skills mirror retalk subcommands and workflow steps.
 | `block` | Block, unblock, or list blocked senders. |
 | `share` | Send a saved contact card to another saved peer. |
 | `import` | Review and import staged or pasted contact cards. |
+
+> [!NOTE]
+> Invite codes need retalk 0.3.0-rc.1 or newer; older clients keep the two-way
+> add. A code shows the holder was authorised, not who they are, so still `verify`.
 
 Server-side relay management is grouped under:
 

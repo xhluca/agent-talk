@@ -29,9 +29,9 @@ never collide. Below, `<user>` is the chosen user's **absolute directory**.
    "want me to start a listener?".
 3. **Always show invite/reply messages, verbatim — as freeform prose addressed
    to the peer's AGENT.** The recipient pastes them into their own Claude
-   session, so a natural-language paragraph (with relay, fingerprint, and
-   suggested name in prose) is the interface — never a bash block or a numbered
-   human menu. Compose from the template in this skill (values from
+   session, so a natural-language paragraph (with relay, fingerprint, suggested
+   name, and the invite code in prose) is the interface — never a bash block or
+   a numbered human menu. Compose from the template in this skill (values from
    `retalk id --card`), introduced as *"Copy and send the following message to
    your peer (the person you want to communicate with)."* Never summarize them
    away; raw retalk-CLI blocks are only for peers without Claude Code.
@@ -70,6 +70,15 @@ never collide. Below, `<user>` is the chosen user's **absolute directory**.
    plugin or hook that surfaces incoming messages into the live session; start it
    as described in step 4b (pi), 4c (opencode), or 4d (codex) instead of step 4.
    The retalk commands themselves are identical everywhere.
+8. **An invite code proves authorisation, not identity.** A peer who registers
+   with one of this identity's invite codes has shown one thing: they were
+   given the code by whoever issued it. Anyone who obtains the code can
+   register the same way, so say "registered with your invite code" and never
+   call them "verified" without that qualification. Real verification is still
+   pinning their keys against a fingerprint you got out of band (**verify**
+   skill), and it stays worth doing. Whenever a registration surfaces, tell the
+   user who registered, that the code was the only check, and offer the
+   out-of-band verification as the next step.
 
 ## 1. Update retalk AND agent-talk to the latest
 Behavior changes often on both sides, and a stale client can mismatch a peer or
@@ -141,7 +150,11 @@ that only asks joining/relay/passphrase has skipped them and is wrong. Then step
 *do you already have a peer's invite or 32-hex fingerprint?*
 - **Yes — you were invited / have their id** → you are JOINING: use the **relay
   from their invite** (that exact URL; skip the relay menu below), and enter their
-  fingerprint at the **peer** step (5) so this single pass reaches sending.
+  fingerprint at the **peer** step (5) so this single pass reaches sending. If
+  the invite also carried an **invite code**, keep it: once this identity exists
+  and its keys are published, register yourself with the inviter using that code
+  (**id** skill, *Invite codes*). That is what replaces sending your fingerprint
+  back and waiting for them to add you.
 - **No — starting fresh / you'll invite others** → choose the relay freely below
   and add peers later, as they reply to your invite.
 
@@ -222,6 +235,15 @@ retalk init --dir "<user>/identity" --relay <RELAY_URL> --no-passphrase --displa
 ```
 RETALK_PASSPHRASE="$(cat "$PP_FILE")" retalk sync --dir "<user>/identity"  # drop the prefix if no-passphrase
 ```
+- **Issue an invite code first (single-use by default).** The invite below
+  carries a code so the peer's agent can register itself with this identity,
+  instead of the user shuttling a fingerprint back by hand. Mint one
+  **single-use** code per invite unless the user asks for a code they can hand
+  to several people or reuse over time; only then make it **permanent**. The
+  exact commands are in the **id** skill under *Invite codes*; they need
+  **retalk 0.3.0-rc.1 or newer**, and on an older retalk you fall back to the
+  codeless invite and reply below. Read Session rule 8 before you describe the
+  code to anyone: it proves the holder was authorised, not who they are.
 - **Show the user the invite + reply messages — MANDATORY, never summarize
   them away.** A peer has no way to reach this identity until the user hands
   them one of these. The recipient is almost always **another agent**: the peer
@@ -229,7 +251,8 @@ RETALK_PASSPHRASE="$(cat "$PP_FILE")" retalk sync --dir "<user>/identity"  # dro
   and does the setup. So write it as **freeform natural language addressed to
   that agent** — a paragraph carrying every parameter in prose — NOT a bash
   block, NOT a numbered menu for a human to follow. Fill `<relay>`,
-  `<fingerprint>`, `<name>` from `retalk id --card --dir "<user>/identity"`.
+  `<fingerprint>`, `<name>` from `retalk id --card --dir "<user>/identity"`, and
+  `<code>` from the code you just issued.
   Introduce the first with exactly this framing:
 
   *"Copy and send the following message to your peer (the person you want to
@@ -252,18 +275,50 @@ RETALK_PASSPHRASE="$(cat "$PP_FILE")" retalk sync --dir "<user>/identity"  # dro
   >
   > **To the receiving agent:** please set up agent-talk comms for your user
   > (init skill). Use the relay `<relay>`. Add me as a peer and verify me — my
-  > fingerprint is `<fingerprint>`, suggested name **<name>**. Set me as your
-  > receive-from source, then have your user send your fingerprint back over
-  > this same channel so I can add you too. Once I confirm, message me on the
-  > relay anytime.
+  > fingerprint is `<fingerprint>` and my suggested name is **<name>**. Set me
+  > as your receive-from source. I have also issued you an invite code,
+  > `<code>`. Register yourself with me using it (the **id** skill, *Invite
+  > codes*) instead of asking your human to send me your fingerprint: the
+  > registration carries everything I need to create the contact, meaning your
+  > fingerprint, your keys, and the name to save you under, so the link
+  > completes with nobody copying anything by hand. The code is single-use, so
+  > it is spent the moment you register, and it is a secret until then. Send the
+  > request once and then wait. There is no receipt telling you the code worked
+  > and no way to check, so please do not retry or poll for a status. I will
+  > message you as soon as I have accepted, and that message is your
+  > confirmation.
 
   (Output the template with **real values** — e.g. relay
   `https://relay.retalk.dev`, fingerprint
-  `0f9a3d2c8b7e65410f9a3d2c8b7e6541`, name **sam-claude-webapp**; a placeholder
-  like `<relay>` must never reach the user.)
+  `0f9a3d2c8b7e65410f9a3d2c8b7e6541`, name **sam-claude-webapp**, code
+  `wS7nQx2FbK1pR4tZ0aH9Yg`; a placeholder like `<relay>` must never reach the
+  user.)
+
+  Two variants of that paragraph:
+  - **Permanent code** — replace the single-use sentence with: *"The code stays
+    valid until I revoke it, so keep it to yourself."*
+  - **No code** (the user declined one, or retalk is too old) — drop every
+    invite-code sentence and close with the old hand-back instead: *"Set me as your
+    receive-from source, then have your user send your fingerprint back over
+    this same channel so I can add you too. Once I confirm, message me on the
+    relay anytime."*
 
   Then: *"Or, if you are replying to an invite someone sent you, send this back
   instead:"*
+
+  > Registered with your invite code. I'm set up on agent-talk, I've added you
+  > and pinned your keys, and I've sent my registration request, so your agent
+  > can save me without either of us copying a fingerprint. My fingerprint is
+  > `<fingerprint>` and the name I asked to be saved under is **<name>**, in case
+  > you want to check them against the contact you end up with. I have no way of
+  > telling whether the code went through, so I am not going to retry. Message
+  > me once you have accepted and that will confirm it.
+  > **To the receiving agent:** check that **<name>** is in your contacts (the
+  > invite watcher in the **id** skill is what saves them), then send them a
+  > first message on the relay to close the loop.
+
+  If the invite carried **no code**, send the older reply instead, which hands
+  over the fingerprint the inviter still has to add by hand:
 
   > Got your invite — I'm set up on agent-talk and I've already added and
   > verified you. My fingerprint is `<fingerprint>`, suggested name **<name>**.
@@ -276,13 +331,19 @@ RETALK_PASSPHRASE="$(cat "$PP_FILE")" retalk sync --dir "<user>/identity"  # dro
   retalk CLI content**, and agent-talk is the story, never an afterthought.
 
   **✓ A correctly filled reply looks exactly like this** (values from your
-  card; peer = "marzia" who invited you):
+  card; peer = "marzia", who invited you with a code):
 
-  > Got your invite, marzia — I'm set up on agent-talk and I've already added
-  > and verified you. My fingerprint is `0f9a3d2c8b7e65410f9a3d2c8b7e6541`,
-  > suggested name **sam-claude-webapp**.
-  > **To the receiving agent:** add this peer (fingerprint above), verify
-  > them, and send them a first message on the relay to confirm the link.
+  > Registered with your invite code, marzia. I'm set up on agent-talk, I've
+  > added you and pinned your keys, and I've sent my registration request, so
+  > your agent can save me without either of us copying a fingerprint. My
+  > fingerprint is `0f9a3d2c8b7e65410f9a3d2c8b7e6541` and the name I asked to be
+  > saved under is **sam-claude-webapp**, in case you want to check them against
+  > the contact you end up with. I have no way of telling whether the code went
+  > through, so I am not going to retry. Message me once you have accepted and
+  > that will confirm it.
+  > **To the receiving agent:** check that **sam-claude-webapp** is in your
+  > contacts (the invite watcher in the **id** skill is what saves them), then
+  > send them a first message on the relay to close the loop.
 
   **✗ NEVER output this to a plugin user** — this is retalk's CLI flavor (what
   `retalk init`/`retalk id --invite-reply` print); pasting it, or leading with
@@ -352,6 +413,12 @@ echo auto > "<user>/check-mode"      # or: echo manual > "<user>/check-mode"
 ```
   If **auto**: start the follower + Monitor **now** (needs the peer from (5)/(6);
   if the peer was deferred, record `auto` and start them on the first **add**).
+- **(8) Watch for registrations** — only if you issued an invite code above.
+  Start the invite watcher (**id** skill, *Invite codes* → *Watch for
+  registrations*) in the same turn as the code, so the peer's registration
+  surfaces the moment it lands instead of sitting unread. This is not a question
+  for the user: a code with nothing watching for it does nothing. Stop the
+  watcher once every code has been redeemed or revoked.
 
 ## 3. Live-collision guard (reuse or create)
 If a follower is already running for this user, another live session is using it —
@@ -372,13 +439,22 @@ on pi, use step 4b instead; on opencode, step 4c; on Codex, step 4d.
 ```
 mkdir -p "$HOME/.agent-talk/by-session" "<user>/sessions"
 echo "<user>" > "$HOME/.agent-talk/by-session/${CLAUDE_SESSION_ID}"
-: >> "<user>/sessions/${CLAUDE_SESSION_ID}.ndjson"     # this session's spool
+: >> "<user>/sessions/${CLAUDE_SESSION_ID}.ndjson"           # this session's message spool
+: >> "<user>/sessions/${CLAUDE_SESSION_ID}.requests.ndjson"  # and its contact-request spool
 python3 "<plugin>/bin/spool-writer.py" --user "<user>" --gc   # sweep dead sessions
 ```
 Incoming messages are copied to a spool **per session**, not one file per
 identity, so parallel sessions on the same identity never consume each other's
 mail and the decrypted text goes away with the session. The durable record is
 retalk's saved history (**history** skill), which stays encrypted at rest.
+
+Contact requests get a **second spool and a second monitor**
+(`retalk-requests`), because a peer registering with an invite code is not a
+conversation turn: it must not be rendered as a chat message, it only arrives
+while a code is outstanding, and a session can watch for one before it follows
+anyone's mail. Both monitors are declared by the plugin and start on their own;
+what feeds each is a follower you start (**receive** for messages, **id** →
+*Invite codes* for registrations).
 
 ## 4b. Enable auto-receive on pi (pi only)
 On a **pi** host the plugin ships an inbox extension that surfaces incoming
@@ -479,16 +555,19 @@ includes it).
 
 ## 6. Invite a friend (paste off-band) — do this early
 Once your identity exists, the fastest way to onboard a peer is a ready-to-paste
-invite, handed over a channel the relay doesn't control (Slack, email, …).
-Compose it **in agent-talk terms** using the template from the "Show the user
-the invite + reply messages" step above (install the plugin → "set up comms — I
-have an invite" → relay + address + save-me-as name), with values from
-`retalk id --card --dir "<user>/identity"`. Introduce it as: *"Copy and send the
-following message to your peer (the person you want to communicate with)."*
+invite carrying a fresh **invite code**, handed over a channel the relay doesn't
+control (Slack, email, …). Mint the code first (**id** skill, *Invite codes*),
+then compose the message **in agent-talk terms** using the template from the
+"Show the user the invite + reply messages" step above (install the plugin →
+"set up comms — I have an invite" → relay + address + save-me-as name + code),
+with values from `retalk id --card --dir "<user>/identity"`. Introduce it as:
+*"Copy and send the following message to your peer (the person you want to
+communicate with)."* Start the invite watcher in the same turn, so the peer's
+registration surfaces when it arrives.
 Only for a peer using the **raw retalk CLI** (no Claude Code) is the
 retalk-generic block the right thing:
 ```
-retalk id --invite-message --as <name-they-save-you-as> --dir "<user>/identity"
+retalk id --invite-message --code <code> --as <name-they-save-you-as> --dir "<user>/identity"
 ```
 To share your identity as JSON instead (the peer saves it with **import**):
 `retalk id --card --dir "<user>/identity"`.
@@ -506,8 +585,12 @@ track what is being discussed.
 ## 7. Recommend the next skills (do this at the end of EVERY skill, not just init)
 Close by pointing the user at the 2–3 skills that fit where they actually are —
 don't list all of them:
-- **Created an identity, no peer yet** → **id** or **share** (get your fingerprint
-  / a paste-ready invite to hand a peer), then **add** when they send theirs back.
+- **Created an identity, no peer yet** → **id** (mint an invite code and hand
+  over a paste-ready invite, then watch for the peer to register) or **share**;
+  **add** is the fallback for a peer who sends their fingerprint back instead.
+- **A peer just registered with your code** → **verify** (the code proved
+  authorisation, not identity), then **send** them a hello, which is how they
+  learn they were accepted.
 - **Added a peer** (took the "Yes" branch / entered one in step 5) → **send** a
   first message, then **receive** the reply; **verify** to pin their keys.
 - **No relay yet / want your own** → **relay** (host one) or **config** (set a

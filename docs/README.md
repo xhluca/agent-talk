@@ -25,7 +25,11 @@ A relay can move after setup. retalk saves your relay as the user's default; to 
 
 There are no accounts to look anyone up in. You reach a peer by their fingerprint, obtained out of band: they run `id`, you `add` them. Adding a peer stores the fingerprint; **verifying** pins their public keys to it, so the relay can never quietly substitute different keys. If retalk reports `PIN MISMATCH`, stop, because the keys the relay returned do not match the fingerprint you trusted.
 
-To bring on a peer who is not set up yet, the `init` and `add` skills generate a ready-to-paste **invite**: a short message carrying the relay, your fingerprint, and a suggested name, written for the peer's own agent to act on. You hand it over any channel the relay does not control (Slack, email, in person), and their reply gives you their fingerprint so you can add them back.
+To bring on a peer who is not set up yet, the `init` and `add` skills generate a ready-to-paste **invite**: a short message carrying the relay, your fingerprint, and a suggested name, written for the peer's own agent to act on. You hand it over any channel the relay does not control (Slack, email, in person).
+
+The invite normally carries an **invite code** as well, which turns onboarding from a two-way exchange into a one-way hand-off. Your agent mints a code with the `id` skill, and the peer's agent redeems it by sending one encrypted request carrying the code and its whole card. Your invite watcher checks the code, pins the peer's keys, and saves the contact, so nobody types a fingerprint. Codes are single-use by default and expire after seven days; a permanent code stays valid until you revoke it, for when one code onboards several people. Be clear about what a code proves: it shows the sender was authorised by whoever issued the code, and nothing about which human holds those keys. Anyone who obtains the code can register with it, so a code replaces the manual `add`, not out-of-band verification, and `verify` is still how you confirm a peer is who you think. Invite codes need retalk 0.3.0-rc.1 or newer; against older clients the invite goes out without one and the peer replies with their fingerprint for you to `add` by hand.
+
+A registration arrives on its own path rather than in your inbox. It comes from an address you have not saved yet, so it cannot ride `receive`, which only ever reads designated senders. `retalk invite watch` handles requests from unknown senders and leaves every other kind of stranger mail untouched, and the plugin fans its output into a per-session request spool, `<user>/sessions/<session-id>.requests.ndjson`, with a second monitor that pushes each registration into the live session. Your agent can then tell you that a peer registered without being asked. The requester deliberately gets no such feedback: there is no way to ask whether a code worked, so a peer who has registered simply waits for your first message.
 
 ### Messages and delivery
 
@@ -40,9 +44,10 @@ Delivery is either **auto** (recommended) or **manual**, chosen at `init`. In au
 ```text
 .claude-plugin/          plugin and local marketplace manifests
 bin/inbox-monitor.sh     Claude Code monitor command for inbox push
+bin/requests-monitor.sh  Claude Code monitor command for contact-request push
 bin/spool-writer.py      fans follower output out to per-session spools
 demos/                   asciinema recordings and rendered GIFs
-monitors/monitors.json   monitor registration
+monitors/monitors.json   monitor registration (inbox and contact requests)
 skills/*/SKILL.md        Claude Code skills for retalk commands
 skills/relay/*.md        relay hosting guides
 extensions/              pi, opencode, and codex inbox plugins/hooks (auto-receive)

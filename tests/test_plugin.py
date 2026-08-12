@@ -51,6 +51,35 @@ class TestSkills(unittest.TestCase):
                     self.assertRegex(ln.lower(), r"never|not |disallow|sparing",
                                      f"{f}: unsafe --all instruction: {ln.strip()}")
 
+    def test_invite_commands_target_the_identity_inline(self):
+        # agent-talk never relies on a saved default identity; every retalk
+        # call names one with --dir. The invite-code commands are no different.
+        for f in SKILLS:
+            for ln in pathlib.Path(f).read_text().splitlines():
+                s = ln.strip()
+                if not s.startswith(("retalk invite ", "retalk request ")):
+                    continue
+                self.assertTrue("--dir" in s or "--help" in s,
+                                f"{f}: no --dir on: {s}")
+
+    def test_invite_code_skills_state_the_retalk_floor(self):
+        # These commands do not exist before retalk 0.3.0-rc.1, so a skill that
+        # teaches them must say so and keep the manual add path as fallback.
+        for f in SKILLS:
+            text = pathlib.Path(f).read_text()
+            if "invite code" not in text.lower():
+                continue
+            self.assertIn("0.3.0-rc.1", text,
+                          f"{f}: mentions invite codes without the version floor")
+
+    def test_invite_code_skills_qualify_what_a_code_proves(self):
+        # A code shows the holder was authorised by the issuer, nothing more.
+        # Losing that caveat would leave the skills calling a peer "verified".
+        for name in ("id", "init"):
+            text = pathlib.Path(ROOT, "skills", name, "SKILL.md").read_text()
+            self.assertIn("authoris", text.lower(),
+                          f"skills/{name}: invite codes need the authorisation caveat")
+
     def test_non_init_skills_use_resolved_user_dir(self):
         # non-init skills must use the resolved <user> dir, not a hardcoded path
         for f in SKILLS:

@@ -122,6 +122,15 @@ apart by the fields, and don't render a control record as a chat bubble:
 The reliable test: a record with a `text` field is chat; one with a `kind`
 field is a control record — key off `kind`.
 
+**Contact requests do not come through here.** A peer registering with one of
+your invite codes sends their request from an address you have not saved yet, and
+`receive` only ever reads designated senders. Those requests are handled by
+`retalk invite watch`, land in a separate per-session spool
+(`<user>/sessions/<session-id>.requests.ndjson`), and are pushed by the plugin's
+second monitor, `retalk-requests`. See the **id** skill, *Invite codes* (retalk
+0.3.0-rc.1 or newer). Once a peer has registered, they are an ordinary saved
+contact and their mail arrives here like anyone else's.
+
 ## Keeping a durable log (on by default)
 - agent-talk sets `RETALK_SAVE_MESSAGE=1` on every `receive` (shown above and in
   the follower below), so each chat message also gets a **sealed at-rest copy**
@@ -253,3 +262,4 @@ Environment=RETALK_SAVE_MESSAGE=1
 - **contacts** — see who's saved.
 - **group** — see or adjust a room's members.
 - **block** — drop an unwanted sender.
+- **id** — issue an invite code and watch for a new peer to register themselves.

@@ -32,16 +32,17 @@ REQUEST_SPOOL="$udir/sessions/$sid.requests.ndjson"
 mkdir -p "$udir/sessions" 2>/dev/null || true
 : >> "$REQUEST_SPOOL" 2>/dev/null || true
 
-# Emit each request once, keyed on its id (falling back to the whole line for a
-# record without one). A retried registration repeats the same id, so the user
-# hears about a peer once. fflush keeps the monitor line-live.
+# Emit each distinct record once. These records carry no message id, so the key
+# is the whole line with the writer's arrival stamp removed: two spool lines
+# that differ only in `ts` describe the same event. That collapses a watcher
+# restarted over the same mail, a one-shot watch run beside a following one,
+# and a stranger retrying the same dead code, while still letting a peer who
+# was rejected and then accepted surface twice. fflush keeps the monitor
+# line-live.
 dedupe() {
   awk '{
-    if (match($0, /"id"[[:space:]]*:[[:space:]]*"[^"]*"/)) {
-      key = substr($0, RSTART, RLENGTH)
-    } else {
-      key = $0
-    }
+    key = $0
+    gsub(/"ts"[[:space:]]*:[[:space:]]*"[^"]*",?[[:space:]]*/, "", key)
     if (!(key in seen)) { seen[key] = 1; print; fflush() }
   }'
 }

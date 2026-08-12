@@ -132,11 +132,11 @@ class TestSpoolWriter(unittest.TestCase):
         # so it must never reach the inbox a session renders as chat.
         self.register("s-one", self.user)
         self.run_writer(
-            ['{"id":"r1","kind":"contact_request","from":"ff","name":"sam"}'],
+            ['{"kind":"contact_accepted","code":"wS7n","from":"ff","name":"sam"}'],
             "--stream", "requests")
 
         got = self.read(self.request_spool("s-one"))
-        self.assertEqual([r["id"] for r in got], ["r1"])
+        self.assertEqual([r["name"] for r in got], ["sam"])
         self.assertIn("ts", got[0], "requests are stamped like messages")
         self.assertFalse(os.path.exists(self.spool("s-one")),
                          "a request must not land in the message spool")
@@ -149,7 +149,7 @@ class TestSpoolWriter(unittest.TestCase):
     def test_gc_sweeps_request_spools_by_session_liveness(self):
         self.register("s-live", self.user)
         self.register("s-dead", self.user)
-        self.run_writer(['{"id":"r1","kind":"contact_request","from":"ff"}'],
+        self.run_writer(['{"kind":"contact_accepted","code":"wS7n","from":"ff"}'],
                         "--stream", "requests")
         self.run_writer(['{"id":"m1","text":"hi"}'])
         self.assertTrue(os.path.exists(self.request_spool("s-dead")))
