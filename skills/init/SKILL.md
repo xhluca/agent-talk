@@ -100,13 +100,26 @@ already installed.
 
 **retalk** — install-or-upgrade in one shot from **PyPI**:
 ```
-uv tool install --upgrade retalk     # installs if missing, upgrades to latest if present
+uv tool install --upgrade --prerelease allow retalk   # installs if missing, upgrades if present
 # no uv? fall back to:
-pip install -U retalk                # or: pip3 install -U retalk
+pip install -U --pre retalk                           # or: pip3 install -U --pre retalk
 ```
-Then confirm it runs: `retalk --help`. Prefer PyPI over source; only fall back
-to `uv tool install --upgrade "git+https://github.com/xhluca/retalk"` if you
-specifically need unreleased code.
+Then confirm it runs: `retalk --help`.
+
+**The prerelease flag is load-bearing, so do not drop it.** The floor these
+skills need, retalk **0.3.0rc1**, is a release candidate, and both uv and pip
+ignore prereleases by default whenever a stable release also matches. Plain
+`uv tool install --upgrade retalk` therefore installs the older stable, reports
+success, and says nothing about the version it skipped; every
+`--passphrase-path` and every invite-code command then dies at argument parsing
+with `unrecognized arguments`. `--prerelease allow` (uv) and `--pre` (pip) are
+what make the floor reachable. They stay correct once a stable 0.3.0 or newer
+exists, because both resolvers still prefer the highest version, so leave them
+in rather than trying to decide whether they are still needed.
+
+Prefer PyPI over source; only fall back to
+`uv tool install --upgrade "git+https://github.com/xhluca/retalk"` if you
+specifically need code that is not released at all.
 
 **Then check what this retalk can do — once, and remember the answer for the
 session.** Two things the skills use arrived in **retalk 0.3.0-rc.1**: the
@@ -117,6 +130,15 @@ argument parsing with `unrecognized arguments`, so probe rather than assume:
 retalk sync --help 2>&1 | grep -q -- --passphrase-file && echo "passphrase by path available" || echo "older retalk: use the RETALK_PASSPHRASE fallback"
 retalk invite --help >/dev/null 2>&1 && echo "invite codes available" || echo "older retalk: use the manual add path"
 ```
+**If either probe says "older retalk", suspect the install before you accept the
+fallback.** On a machine that has just run the command above, by far the most
+likely cause is that the prerelease flag was dropped, so the resolver quietly
+kept the older stable. Check with `retalk --version`: anything below 0.3.0rc1
+means re-run the install with `--prerelease allow` (or `--pre`) and probe again.
+Only treat the fallbacks below as the answer once a re-install with the flag
+still reports a version under the floor, which is what a genuinely pinned or
+offline environment looks like.
+
 The environment-variable fallback, for older retalk only: `RETALK_PASSPHRASE="$(cat <user>/passphrase)" retalk sync --dir <user>/identity`.
 It works, but it is a compound command that reads the secret out of its file, so
 expect the user to be asked to approve every single call. The upgrade above
