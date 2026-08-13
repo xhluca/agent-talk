@@ -95,8 +95,13 @@ own names. A duplicate name (another room of yours) is refused.
   they try to include you. Report it plainly: "left the room; the others have
   been told."
   ```
-  retalk group leave team --dir "<user>/identity"
+  retalk group leave team --dir "<user>/identity" --passphrase-path "<user>/passphrase"
   ```
+  It signs, so an encrypted identity needs unlocking: name the passphrase file
+  with `--passphrase-path` instead of reading it, which keeps the call one flat
+  command (retalk 0.3.0-rc.1+; drop the flag on a `--no-passphrase` identity,
+  older retalk in **init** Session rule 8). The other group commands are local
+  bookkeeping and take neither.
 - **join** — undo a leave. It only clears the "I left" mark; the room actually
   comes back when a current member next sends to it (and includes you), so the
   usual step is to ask someone in the room to **add** you back.

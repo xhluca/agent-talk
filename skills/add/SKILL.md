@@ -7,8 +7,13 @@ description: Save a peer's retalk user id (their 32-hex fingerprint), optionally
 
 ```
 retalk add <fingerprint> --peer <name> --dir "<user>/identity"
-retalk add <fingerprint> --peer <name> --verify --dir "<user>/identity"   # also fetch + pin their keys now
+retalk add <fingerprint> --peer <name> --verify --dir "<user>/identity" --passphrase-path "<user>/passphrase"   # also fetch + pin their keys now
 ```
+
+A plain `add` is local and needs no passphrase. `--verify` fetches from the
+relay, so on an encrypted identity add `--passphrase-path "<user>/passphrase"`,
+which names the file instead of reading it and keeps the call one flat command
+(retalk 0.3.0-rc.1+; **init** Session rule 8).
 
 `<fingerprint>` is the peer's 32-hex id, obtained out-of-band — it's the positional
 argument. `--peer <name>` is an optional local label (yours alone; the peer never

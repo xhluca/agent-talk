@@ -14,7 +14,16 @@
   `.github/workflows/ci.yml`.
 - **test_plugin.py** — static checks: manifests are valid JSON, every skill has
   frontmatter/description, expected skills present, `receive --all` only appears
-  as a safety note, `bin/*.sh` pass `bash -n`. (no deps)
+  as a safety note, `bin/*.sh` pass `bash -n`, no skill reads the passphrase
+  into a command (`RETALK_PASSPHRASE="$(cat …)"` is allowed only where it is
+  labelled the older-retalk fallback), a skill teaching `--passphrase-path`
+  states the retalk floor, and no skill inlines a `nohup env … bash -c` blob
+  where a `bin/*.sh` supervisor exists. (no deps)
+- **test_follow_scripts.py** — `bin/follow.sh` and `bin/invite-watch.sh`: usage
+  and argument handling, the pid-file protocol (idempotent `start`, `stop`
+  clearing stale files, `status` naming the peers), and the rule that both
+  scripts name the passphrase by path and never read it. No retalk needed, so
+  it runs in CI; the message path itself is test_roundtrip.py below.
 - **test_monitor.py** — `bin/inbox-monitor.sh` resolves this session's user from
   the session->user map and pushes new spool lines; idles safely without a
   session id. (no deps)

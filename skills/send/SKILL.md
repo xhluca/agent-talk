@@ -6,16 +6,19 @@ description: Send an end-to-end-encrypted message to a peer, autonomously. Use w
 # send — message a peer (seamless, autonomous)
 
 ```
-RETALK_SAVE_MESSAGE=1 retalk send --peer <name-or-fingerprint> "your message" --dir "<user>/identity"
+RETALK_SAVE_MESSAGE=1 retalk send --peer <name-or-fingerprint> "your message" --dir "<user>/identity" --passphrase-path "<user>/passphrase"
 # -> {"id","to"} on stdout
-RETALK_SAVE_MESSAGE=1 retalk send --group <group-name> "your message" --dir "<user>/identity"   # message a whole room
+RETALK_SAVE_MESSAGE=1 retalk send --group <group-name> "your message" --dir "<user>/identity" --passphrase-path "<user>/passphrase"   # message a whole room
 # -> {"id","group","group_id","sent","failed"} on stdout
 ```
 
 agent-talk sets `RETALK_SAVE_MESSAGE=1` on every `send`, so a sealed copy of what
 you send is kept and **history** shows both sides of the conversation. Use the env
-var (not a `--save`/`--save-messages` flag) so it works across retalk versions. If
-the identity is encrypted, keep the `RETALK_PASSPHRASE=<secret>` prefix as well.
+var (not a `--save`/`--save-messages` flag) so it works across retalk versions. It
+is a setting, not a secret, so it stays a prefix. The passphrase does not: name
+the file with `--passphrase-path` (retalk 0.3.0-rc.1+) so the whole call stays
+one flat command and the secret is never read into it. Drop the flag on a
+`--no-passphrase` identity; on an older retalk see **init** Session rule 8.
 
 ## Show the conversation — always, and make it beautiful
 After every send (and receive), render the exchange in the chat as a clean
@@ -88,8 +91,8 @@ Run without interrupting the human in the normal case:
   `--dir "<user>/identity"` (env vars don't persist between commands);
   the relay is saved in that store and defaults to the init relay (recorded in
   `<user>/relay`). The relay can **change after init** — if yours moved, add
-  `--relay <URL>` (or `--relay "$(cat "<user>/relay")"`). Encrypted identity? prefix
-  `RETALK_PASSPHRASE=<secret>`.
+  `--relay <URL>` (or `--relay "$(cat "<user>/relay")"`). Encrypted identity? add
+  `--passphrase-path "<user>/passphrase"`.
 
 Publishes keys + resends the outbox first; the peer reads it with **receive**.
 First contact auto-verifies the peer's keys — a `PIN MISMATCH` means possible

@@ -80,6 +80,44 @@ class TestSkills(unittest.TestCase):
             self.assertIn("authoris", text.lower(),
                           f"skills/{name}: invite codes need the authorisation caveat")
 
+    def test_never_reads_the_passphrase_into_a_command(self):
+        # The passphrase is named by path (`--passphrase-path`), never read.
+        # `RETALK_PASSPHRASE="$(cat ...)" retalk ...` is two problems in one: it
+        # pipes a secret file into a process that then talks to the network,
+        # which is the shape of credential exfiltration, and the assignment
+        # makes it a compound command that no prefix allowlist rule can match.
+        # It survives only as the documented fallback for retalk older than
+        # 0.3.0-rc.1, so a line carrying it must say which of those it is.
+        for f in SKILLS:
+            for ln in pathlib.Path(f).read_text().splitlines():
+                if 'RETALK_PASSPHRASE="$(cat' not in ln:
+                    continue
+                self.assertRegex(
+                    ln.lower(), r"fallback|older retalk",
+                    f"{f}: reads the passphrase inline: {ln.strip()}")
+
+    def test_passphrase_path_skills_state_the_retalk_floor(self):
+        # --passphrase-path does not exist before retalk 0.3.0-rc.1, where it
+        # dies at argument parsing, so a skill that teaches it must say so.
+        for f in SKILLS:
+            text = pathlib.Path(f).read_text()
+            if "--passphrase-path" not in text:
+                continue
+            self.assertIn("0.3.0-rc.1", text,
+                          f"{f}: uses --passphrase-path without the version floor")
+
+    def test_background_blocks_are_single_commands(self):
+        # The follower and the invite watcher used to be inlined as long
+        # `nohup env ... bash -c '...'` strings: the hardest commands to
+        # allowlist and the most likely to be refused. They live in bin/ now.
+        for f in SKILLS:
+            text = pathlib.Path(f).read_text()
+            self.assertNotIn("nohup env", text,
+                             f"{f}: inline background blob; call bin/*.sh instead")
+        for script in ("follow.sh", "invite-watch.sh"):
+            p = os.path.join(ROOT, "bin", script)
+            self.assertTrue(os.access(p, os.X_OK), f"bin/{script} is not executable")
+
     def test_non_init_skills_use_resolved_user_dir(self):
         # non-init skills must use the resolved <user> dir, not a hardcoded path
         for f in SKILLS:

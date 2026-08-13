@@ -28,8 +28,10 @@ plugin (the usual case), compose the agent-talk version instead — template in
 the **init** skill, values from `--card` — introduced as *"Copy and send the
 following message to your peer (the person you want to communicate with)."* Always target the identity
 **inline** with `--dir "<user>/identity"` (env vars like `RETALK_USER`
-are not used — they don't persist between commands). Encrypted identity? prefix
-`RETALK_PASSPHRASE=<secret>`. No relay contact.
+are not used — they don't persist between commands). Encrypted identity? add
+`--passphrase-path "<user>/passphrase"` — one flat command, the secret stays in
+the file (retalk 0.3.0-rc.1+; **init** Session rule 8 has the older-retalk
+fallback). No relay contact.
 
 > `<user>` = this session's **user directory** — an absolute path resolved at **init** (e.g. `~/.agent-talk/users/alice` (global) or `<project>/.agent-talk/users/alice` (local)). Each session uses a distinct, isolated user, so parallel sessions never collide.
 
@@ -76,8 +78,10 @@ retalk invite new --expires <days> --dir "<user>/identity"      # override the e
 ```
 Pass `--peer <name>` whenever you already know who the invite is for: the
 contact then lands under that local name instead of whatever name the requester
-suggests for themselves. Prefix `RETALK_PASSPHRASE=<secret>` if the identity is
-encrypted.
+suggests for themselves. Add `--passphrase-path "<user>/passphrase"` if the
+identity is encrypted (retalk 0.3.0-rc.1+, like everything else here — but
+probe for it separately, since it and `invite` are two independent additions
+and §1's probe is what settles which this retalk has).
 
 Take `code` from that JSON and put it in the invite message (template in the
 **init** skill). Then **start the watcher below in the same turn**. A code with
@@ -127,36 +131,30 @@ retalk invite watch --dir "<user>/identity"
 ```
 `invite watch <start|stop|status>` — the background watcher, which feeds the
 plugin's **contact-request spool** so registrations surface in the session the
-way messages do. Start it right after issuing a code:
+way messages do. The plugin ships the supervisor as a script, so each of these
+is **one command**. Start it right after issuing a code:
 ```
-D="<user>"; PID="$D/invite-watch.pid"
-if [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; then
-  echo "already watching (pid $(cat "$PID"))"
-else
-  nohup env UD="$D" W="<plugin>/bin/spool-writer.py" bash -c 'while true; do retalk invite watch --follow --interval 10 --quiet --dir "$UD/identity" 2>> "$UD/invite-watch.err" | python3 "$W" --user "$UD" --stream requests 2>> "$UD/invite-watch.err"; sleep 2; done' >/dev/null 2>&1 &
-  echo $! > "$PID"; echo "watching for registrations (pid $(cat "$PID"))"
-fi
+<plugin>/bin/invite-watch.sh start "<user>" --passphrase-path "<user>/passphrase"
 ```
 ```
-D="<user>"                                                  # stop
-[ -f "$D/invite-watch.pid" ] && kill "$(cat "$D/invite-watch.pid")" 2>/dev/null
-pkill -f "retalk invite watch .*--dir $D/identity" 2>/dev/null
-rm -f "$D/invite-watch.pid"; echo "stopped watching"
-```
-```
-D="<user>"                                                  # status
-[ -f "$D/invite-watch.pid" ] && kill -0 "$(cat "$D/invite-watch.pid")" 2>/dev/null \
-  && echo "watching (pid $(cat "$D/invite-watch.pid"))" || echo "not watching"
-echo "--- recent registrations (this session) ---"
-tail -n 20 "$D/sessions/${CLAUDE_SESSION_ID}.requests.ndjson" 2>/dev/null || echo "(none yet)"
+<plugin>/bin/invite-watch.sh stop "<user>"
+<plugin>/bin/invite-watch.sh status "<user>"
 ```
 - `<plugin>` is this plugin's root (`${CLAUDE_PLUGIN_ROOT}` under Claude Code).
-  Prefix the `nohup env` with `RETALK_PASSPHRASE="$(cat "$PP_FILE")"` if the
-  identity is encrypted, since the watcher decrypts and so needs it.
-- `--interval 10` is a calm default while a code is outstanding; retalk polls
-  every 2 seconds if you leave it off. **Stop the watcher** once every code you
-  issued has been redeemed or revoked; it exists for the onboarding window, not
-  for the whole session.
+  The script finds the spool writer beside itself and restarts `retalk invite
+  watch` if it dies; the pid file (`<user>/invite-watch.pid`) and stderr log
+  (`<user>/invite-watch.err`) are the same as before.
+- The watcher decrypts, so an encrypted identity needs the passphrase; naming
+  the file with `--passphrase-path` keeps the secret out of the command and the
+  environment. Drop the flag on a `--no-passphrase` identity, and drop it too if
+  §1's probe reported a retalk without it (export `RETALK_PASSPHRASE` in the
+  same shell before calling the script instead).
+- The default `--interval 10` is a calm rate while a code is outstanding; retalk
+  polls every 2 seconds if left to itself. **Stop the watcher** once every code
+  you issued has been redeemed or revoked; it exists for the onboarding window,
+  not for the whole session.
+- `status` also prints the tail of this session's request spool, so it answers
+  "is it running and who has registered" in one call.
 - The spool writer's `--stream requests` keeps these records in
   `<user>/sessions/<session-id>.requests.ndjson`, separate from message mail, and
   the plugin's `retalk-requests` monitor pushes each new line into the session.
@@ -190,11 +188,12 @@ You were invited and the invite carried a code. Create your identity and publish
 your keys first (**init**), then send one request. It adds the inviter as a
 contact, pins their published keys, and hands over your card:
 ```
-retalk request <inviter-fingerprint> --code <code> --peer <name-to-save-them-as> --dir "<user>/identity"
+retalk request <inviter-fingerprint> --code <code> --peer <name-to-save-them-as> --dir "<user>/identity" --passphrase-path "<user>/passphrase"
 # stdout, one JSON object: {"id","to"}  (the same shape as a send receipt)
 ```
 - `<name-to-save-them-as>` is the suggested name from their invite; it is your
-  local label for them, and they never learn it.
+  local label for them, and they never learn it. Drop `--passphrase-path` if
+  this identity has no passphrase.
 - **Then wait to be messaged.** Exit 0 means the request was sent, not that it
   was accepted: acceptance happens whenever the inviter's watcher next runs, and
   there is deliberately no way to ask whether a code worked. A silent inviter and

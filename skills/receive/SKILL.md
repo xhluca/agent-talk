@@ -7,7 +7,9 @@ description: Read incoming retalk messages from this session's user's DESIGNATED
 
 `<user>` = this session's user directory (absolute path; resolved at **init**). Target it on every
 command with `--dir "<user>/identity"`; add
-`RETALK_PASSPHRASE=<secret>` if the identity is encrypted. The relay defaults to
+`--passphrase-path "<user>/passphrase"` if the identity is encrypted (retalk
+0.3.0-rc.1+ — one flat command, the secret stays in the file; **init** Session
+rule 8 has the older-retalk fallback). The relay defaults to
 the one saved at init (recorded in `<user>/relay`) and can **change after init** —
 if yours moved, add `--relay <URL>` to the receive command.
 
@@ -97,13 +99,16 @@ transcript** instead:
 ## One-shot read
 Individual (the usual case):
 ```
-RETALK_SAVE_MESSAGE=1 retalk receive --peer <peer> --dir "<user>/identity"
+RETALK_SAVE_MESSAGE=1 retalk receive --peer <peer> --dir "<user>/identity" --passphrase-path "<user>/passphrase"
 # NDJSON: {"id","from","name","text"}; auto-acked
 ```
+`RETALK_SAVE_MESSAGE=1` is a setting, not a secret, so it stays a prefix; the
+passphrase is named by path and never read into the command (drop the flag on a
+`--no-passphrase` identity).
 Contact-list mode — loop saved peers (per-peer, never `--all`; needs jq):
 ```
 retalk contacts --json --dir "<user>/identity" | jq -r .fingerprint | while read -r fp; do
-  [ -n "$fp" ] && RETALK_SAVE_MESSAGE=1 retalk receive --peer "$fp" --dir "<user>/identity"
+  [ -n "$fp" ] && RETALK_SAVE_MESSAGE=1 retalk receive --peer "$fp" --dir "<user>/identity" --passphrase-path "<user>/passphrase"
 done
 ```
 
@@ -162,52 +167,45 @@ The spool is the source of truth; the agent reads it each turn and relays
 anything new. (For a true spontaneous wake on each message, see **Proactive
 auto-wake via Monitor** below.)
 
+The plugin ships the supervisor as a script, so each of these is **one command**
+with the paths written out in full — nothing to assemble inline, and nothing
+that reads the passphrase:
+
 `receive follow <peer> [<peer2> …]` — start (idempotent; survives sessions
 until stopped):
 ```
-D="<user>"; PEERS="<peer> [<peer2> …]"; LBL=${PEERS// /+}
-mkdir -p "$D"; PID="$D/follow.$LBL.pid"
-if [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; then
-  echo "already following $PEERS (pid $(cat "$PID"))"
-else
-  nohup env RP="$PEERS" UD="$D" W="<plugin>/bin/spool-writer.py" RETALK_SAVE_MESSAGE=1 bash -c 'A=""; for p in $RP; do A="$A --peer $p"; done; while true; do retalk receive $A --follow --interval 60 --quiet --dir "$UD/identity" 2>> "$UD/follow.err" | python3 "$W" --user "$UD" 2>> "$UD/follow.err"; sleep 2; done' >/dev/null 2>&1 &
-  echo $! > "$PID"; echo "following $PEERS (pid $(cat "$PID"))"
-fi
+<plugin>/bin/follow.sh start "<user>" <peer> [<peer2> …] --passphrase-path "<user>/passphrase"
+```
+`receive follow stop` / `receive follow status`:
+```
+<plugin>/bin/follow.sh stop "<user>"
+<plugin>/bin/follow.sh status "<user>"
 ```
 - `<plugin>` is this plugin's root (`${CLAUDE_PLUGIN_ROOT}` under Claude Code).
-  The writer keeps writing the older `<user>/inbox.ndjson` as well, so a consumer
-  still pointed at that path keeps working; add `--no-legacy` once nothing reads
-  it.
+  The script finds the spool writer beside itself, sets `RETALK_SAVE_MESSAGE=1`,
+  and restarts `retalk receive` if it dies. It keeps the same pid file
+  (`<user>/follow.<peers>.pid`) and stderr log (`<user>/follow.err`) as before,
+  so it also finds and stops a follower an older version of this skill started.
+- **Version floors.** The script's own `retalk receive --follow --interval
+  --quiet` with repeatable `--peer` needs **retalk 0.2.0+**;
+  `--passphrase-path` needs **retalk 0.3.0-rc.1**. Drop `--passphrase-path` on
+  a `--no-passphrase` identity. On an older retalk, drop it as well and export
+  `RETALK_PASSPHRASE` in the same shell before calling the script (**init**
+  Session rule 8 and §1).
+- The writer keeps writing the older `<user>/inbox.ndjson` as well, so a consumer
+  still pointed at that path keeps working; pass `--no-legacy` to `start` once
+  nothing reads it.
 - **Codex + `codex-with-daemon` only:** if the user starts their Codex sessions
   through the `codex-with-daemon` launcher (so idle sessions can be woken, see
-  init step 4d), append `--wake-codex` to the spool-writer command above. Each
+  init step 4d), add `--wake-codex` to the `start` command. Each
   delivered message then also nudges the idle session awake, best-effort and
   silent when no daemon is reachable. Do not add the flag otherwise; hooks
   alone deliver at the next prompt or end of turn, and waking is the user's
   opt-in.
-- For a rapid live exchange, restart with a smaller `--interval` (e.g. 5); 60
-  is the calm default for all-session listening.
-- retalk older than 0.2.0 has none of these flags: drop `--interval`/`--quiet`
-  and run one `receive --peer X --follow` process per peer (the init skill's
-  install-or-upgrade step normally makes this moot).
-
-`receive follow stop`:
-```
-D="<user>"
-for f in "$D"/follow.*.pid; do [ -e "$f" ] || continue
-  kill "$(cat "$f")" 2>/dev/null; rm -f "$f"; done
-pkill -f "retalk receive .*--dir $D/identity" 2>/dev/null; echo "stopped"
-```
-`receive follow status`:
-```
-D="<user>"
-for f in "$D"/follow.*.pid; do [ -e "$f" ] || continue
-  p=$(basename "$f" .pid); p=${p#follow.}
-  kill -0 "$(cat "$f")" 2>/dev/null && echo "following: $p (pid $(cat "$f"))"; done
-echo "--- recent messages (this session's spool) ---"
-tail -n 20 "$D/sessions/${CLAUDE_SESSION_ID}.ndjson" 2>/dev/null \
-  || tail -n 20 "$D/inbox.ndjson" 2>/dev/null || echo "(none yet)"
-```
+- For a rapid live exchange, stop and start again with `--interval 5`; the
+  default 60 is the calm rate for all-session listening.
+- `status` also prints the tail of this session's spool, so it answers "is it
+  running and what has arrived" in one call.
 
 The spool (`<user>/sessions/<session-id>.ndjson`) is this session's record of
 what arrived; retalk's saved history (**history** skill) is the durable one that
@@ -251,11 +249,14 @@ and prefer the Monitor recipe whenever it's available.
 A systemd user service running the scoped follower (the store holds the relay):
 ```
 [Service]
-ExecStart=/bin/sh -c 'retalk receive --peer <peer> --follow --interval 60 --quiet --dir <user>/identity | python3 <plugin>/bin/spool-writer.py --user <user>'
+ExecStart=/bin/sh -c 'retalk receive --peer <peer> --follow --interval 60 --quiet --dir <user>/identity --passphrase-path <user>/passphrase | python3 <plugin>/bin/spool-writer.py --user <user>'
 Restart=always
 Environment=RETALK_SAVE_MESSAGE=1
-# Environment=RETALK_PASSPHRASE=<secret>   # only if the identity is encrypted
 ```
+Drop `--passphrase-path` if the identity has no passphrase. systemd can also
+carry the path in the environment instead, which is the same contract:
+`Environment=RETALK_PASSPHRASE_FILE=<user>/passphrase`. Never put the
+passphrase itself in a unit file — the file is world-readable by default.
 
 ## Next
 - **send** — reply to the sender (or the whole room with `--group`).
