@@ -626,7 +626,10 @@ attached to it. It is for one thing: making messages reach a Codex session that
 is sitting idle at the prompt. A user who wants that starts sessions with
 `codex-with-daemon` in place of `codex` (same arguments, spool variable set the
 same way) and has the follower's spool writer run with `--wake-codex` (receive
-skill). It needs the standalone Codex install, and carries trade-offs listed
+skill). The daemon runs from the standalone install the Codex installer manages
+(`curl -fsSL https://chatgpt.com/codex/install.sh | sh`), at a fixed path under
+`$CODEX_HOME`; an npm-installed `codex` alone cannot start it, and
+`codex app-server daemon start` says exactly that. Other trade-offs are listed
 under "Waking an idle session" in the same doc. Do **not** switch the user to
 the launcher or start the daemon yourself; mention that it exists and let them
 decide. Plain `codex` remains the default and loses only idle wake, never
