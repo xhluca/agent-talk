@@ -501,12 +501,16 @@ echo auto > "<user>/check-mode"      # or: echo manual > "<user>/check-mode"
 
 ## 3. Live-collision guard (reuse or create)
 If a follower is already running for this user, another live session is using it —
-choose a different user:
+choose a different user. Ask the follower supervisor, which is one command and
+knows the difference between a live process and a dead one whose pid file is
+still lying around:
 ```
-for f in "<user>"/follow.*.pid; do
-  [ -e "$f" ] && kill -0 "$(cat "$f")" 2>/dev/null && echo "WARN: <user> is active in another session — pick a different user"
-done
+<plugin>/bin/follow.sh status "<user>"
 ```
+A line starting `following:` means the user is taken; `not following` means it
+is free. Do not test the pid file yourself with `kill -0`: that call succeeds on
+a process that has already exited and not yet been reaped, so it reports a
+follower that is not there.
 
 ## 4. Register this session's user (enables real-time push) — Claude Code only
 This wires the chosen user to Claude Code's inbox **monitor** via a session map.

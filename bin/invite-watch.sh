@@ -54,19 +54,56 @@ done
 
 PID="$UD/invite-watch.pid"
 
+# `kill -0` succeeds on a zombie, which is what a dead watcher becomes whenever
+# nothing reaps it (PID 1 in a container is often not an init). Believing it
+# made `status` report a watcher that had been gone for minutes, and made
+# `start` refuse to restart one. Check the process state, not just its
+# existence.
+alive() {
+  pid="${1:-}"
+  [ -n "$pid" ] || return 1
+  kill -0 "$pid" 2>/dev/null || return 1
+  if [ -r "/proc/$pid/status" ]; then
+    grep -qi '^State:[[:space:]]*Z' "/proc/$pid/status" && return 1
+    return 0
+  fi
+  case "$(ps -o stat= -p "$pid" 2>/dev/null)" in *Z*) return 1 ;; esac
+  return 0
+}
+
 case "$action" in
 
 start)
   mkdir -p "$UD"
-  if [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; then
+  if [ -f "$PID" ] && alive "$(cat "$PID" 2>/dev/null)"; then
     echo "already watching (pid $(cat "$PID"))"; exit 0
   fi
-  nohup "${BASH_SOURCE[0]}" __run "$UD" "${ORIG[@]}" >/dev/null 2>&1 &
-  echo $! > "$PID"
-  echo "watching for registrations (pid $(cat "$PID"))"
+  rm -f "$PID"
+  # `setsid` puts the watcher in its own session, so it outlives the shell that
+  # started it. Without it, a watcher started inside a headless `codex exec`
+  # turn is killed with that turn's process group the moment the turn ends,
+  # which is exactly when the invite code has just gone out.
+  if command -v setsid >/dev/null 2>&1; then
+    setsid nohup "${BASH_SOURCE[0]}" __run "$UD" "${ORIG[@]}" \
+      >/dev/null 2>&1 </dev/null &
+  else
+    nohup "${BASH_SOURCE[0]}" __run "$UD" "${ORIG[@]}" \
+      >/dev/null 2>&1 </dev/null &
+  fi
+  # `__run` records its own pid: `setsid` forks when it is already a process
+  # group leader, so `$!` here is not reliably the watcher's pid.
+  n=0
+  while [ ! -s "$PID" ] && [ "$n" -lt 50 ]; do sleep 0.1; n=$((n + 1)); done
+  if [ -s "$PID" ]; then
+    echo "watching for registrations (pid $(cat "$PID"))"
+  else
+    echo "invite-watch.sh: the watcher did not start; see $UD/invite-watch.err" >&2
+    exit 1
+  fi
   ;;
 
 __run)
+  echo $$ > "$PID"
   pp_args=()
   [ -n "$pp" ] && pp_args=(--passphrase-path "$pp")
   while true; do
@@ -85,7 +122,7 @@ stop)
   ;;
 
 status)
-  if [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; then
+  if [ -f "$PID" ] && alive "$(cat "$PID" 2>/dev/null)"; then
     echo "watching (pid $(cat "$PID"))"
   else
     echo "not watching"

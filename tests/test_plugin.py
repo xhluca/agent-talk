@@ -1,5 +1,5 @@
 """Static checks on the agent-talk plugin (no external deps)."""
-import glob, json, os, pathlib, subprocess, unittest
+import glob, json, os, pathlib, subprocess, time, unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKILLS = sorted(glob.glob(os.path.join(ROOT, "skills", "*", "SKILL.md")))
 EXPECTED = ["init", "id", "add", "verify", "contacts", "send", "receive",
@@ -172,6 +172,60 @@ class TestBinScripts(unittest.TestCase):
         for f in glob.glob(os.path.join(ROOT, "bin", "*.sh")):
             r = subprocess.run(["bash", "-n", f], capture_output=True, text=True)
             self.assertEqual(r.returncode, 0, f"{f}: {r.stderr}")
+
+    def _make_zombie(self):
+        """A pid that exists and is unreaped, so `kill -0` succeeds on it."""
+        # A child this process never waits on stays a zombie until the test
+        # ends, which is exactly the state a dead follower is left in whenever
+        # PID 1 is not an init that reaps (a container running `sleep infinity`,
+        # for one). fork directly rather than through subprocess, which reaps
+        # its own children behind our back.
+        if not hasattr(os, "fork"):
+            self.skipTest("needs fork")
+        pid = os.fork()
+        if pid == 0:                      # child: exit at once, stay unreaped
+            os._exit(0)
+        self.addCleanup(lambda: os.waitpid(pid, 0))
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            try:
+                state = pathlib.Path(f"/proc/{pid}/status").read_text()
+            except OSError:
+                break
+            if "State:\tZ" in state:
+                return pid
+            time.sleep(0.05)
+        self.skipTest("could not produce a zombie to test against")
+
+    def test_a_zombie_pid_is_not_reported_as_running(self):
+        # `kill -0` succeeds on a zombie. Both supervisors used it, so `status`
+        # reported a watcher that had been dead for minutes and `start` refused
+        # to restart it with "already watching".
+        import tempfile
+        if not os.path.isdir("/proc"):
+            self.skipTest("needs /proc")
+        zombie = self._make_zombie()
+        for script, pidfile, dead, live in (
+                ("invite-watch.sh", "invite-watch.pid",
+                 "not watching", "already watching"),
+                ("follow.sh", "follow.peer.pid", "not following",
+                 "already following")):
+            with tempfile.TemporaryDirectory() as ud:
+                pathlib.Path(ud, pidfile).write_text(f"{zombie}\n")
+                r = self._status_without_session_id(script, ud)
+                self.assertIn(dead, r.stdout,
+                              f"bin/{script}: a zombie pid reported as running: "
+                              f"{r.stdout}")
+                self.assertNotIn(live, r.stdout)
+
+    def test_supervisors_detach_the_background_process(self):
+        # Without a new session, a watcher or follower started inside a headless
+        # `codex exec` turn is killed with that turn's process group the moment
+        # the turn ends -- right after the invite code went out.
+        for script in ("invite-watch.sh", "follow.sh"):
+            text = pathlib.Path(ROOT, "bin", script).read_text()
+            self.assertIn("setsid", text,
+                          f"bin/{script}: background process is not detached")
 
     def _status_without_session_id(self, script, user_dir):
         env = dict(os.environ)
