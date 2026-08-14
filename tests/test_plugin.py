@@ -63,14 +63,54 @@ class TestSkills(unittest.TestCase):
                                 f"{f}: no --dir on: {s}")
 
     def test_invite_code_skills_state_the_retalk_floor(self):
-        # These commands do not exist before retalk 0.3.0-rc.1, so a skill that
+        # These commands do not exist before retalk 0.3.0, so a skill that
         # teaches them must say so and keep the manual add path as fallback.
         for f in SKILLS:
             text = pathlib.Path(f).read_text()
             if "invite code" not in text.lower():
                 continue
-            self.assertIn("0.3.0-rc.1", text,
+            self.assertIn("0.3.0", text,
                           f"{f}: mentions invite codes without the version floor")
+
+    def test_no_prerelease_version_floors(self):
+        # The floor is the stable 0.3.0. A skill still naming a release
+        # candidate sends the reader looking for a prerelease that the install
+        # step no longer asks for.
+        for f in SKILLS + [os.path.join(ROOT, "README.md"),
+                           os.path.join(ROOT, "docs", "README.md")]:
+            for ln in pathlib.Path(f).read_text().splitlines():
+                self.assertNotIn("0.3.0rc", ln,
+                                 f"{f}: prerelease version floor: {ln.strip()}")
+                self.assertNotIn("0.3.0-rc", ln,
+                                 f"{f}: prerelease version floor: {ln.strip()}")
+
+    def test_never_teaches_a_prerelease_install(self):
+        # `--prerelease allow` (uv) and `--pre` (pip) were correct only while
+        # the features lived in a release candidate. Left in an install command,
+        # they opt every user into every future candidate, on this install and
+        # on every upgrade after it. Prose about the flags is fine; an install
+        # command carrying one is the bug.
+        for f in SKILLS + [os.path.join(ROOT, "README.md"),
+                           os.path.join(ROOT, "docs", "README.md")]:
+            for ln in pathlib.Path(f).read_text().splitlines():
+                s = ln.strip().lstrip("`> ")
+                if not s.startswith(("uv tool install", "pip install",
+                                     "pip3 install")):
+                    continue
+                self.assertNotIn("--prerelease", s,
+                                 f"{f}: prerelease install command: {s}")
+                self.assertNotRegex(s, r"(?<![-\w])--pre(?![-\w])",
+                                    f"{f}: prerelease install command: {s}")
+
+    def test_watch_is_documented_as_needing_a_modern_relay(self):
+        # `invite watch` reads without consuming, which is a relay-side
+        # capability. Against an older relay it refuses to start, and an agent
+        # that has only been told about the client floor cannot tell why.
+        for name in ("id", "init"):
+            text = pathlib.Path(ROOT, "skills", name, "SKILL.md").read_text()
+            self.assertIn("relay is too old", text,
+                          f"skills/{name}: does not explain the refusal an "
+                          "older relay gives `invite watch`")
 
     def test_invite_code_skills_qualify_what_a_code_proves(self):
         # A code shows the holder was authorised by the issuer, nothing more.
@@ -87,7 +127,7 @@ class TestSkills(unittest.TestCase):
         # which is the shape of credential exfiltration, and the assignment
         # makes it a compound command that no prefix allowlist rule can match.
         # It survives only as the documented fallback for retalk older than
-        # 0.3.0-rc.1, so a line carrying it must say which of those it is.
+        # 0.3.0, so a line carrying it must say which of those it is.
         for f in SKILLS:
             for ln in pathlib.Path(f).read_text().splitlines():
                 if 'RETALK_PASSPHRASE="$(cat' not in ln:
@@ -97,13 +137,13 @@ class TestSkills(unittest.TestCase):
                     f"{f}: reads the passphrase inline: {ln.strip()}")
 
     def test_passphrase_path_skills_state_the_retalk_floor(self):
-        # --passphrase-path does not exist before retalk 0.3.0-rc.1, where it
+        # --passphrase-path does not exist before retalk 0.3.0, where it
         # dies at argument parsing, so a skill that teaches it must say so.
         for f in SKILLS:
             text = pathlib.Path(f).read_text()
             if "--passphrase-path" not in text:
                 continue
-            self.assertIn("0.3.0-rc.1", text,
+            self.assertIn("0.3.0", text,
                           f"{f}: uses --passphrase-path without the version floor")
 
     def test_background_blocks_are_single_commands(self):
@@ -132,6 +172,83 @@ class TestBinScripts(unittest.TestCase):
         for f in glob.glob(os.path.join(ROOT, "bin", "*.sh")):
             r = subprocess.run(["bash", "-n", f], capture_output=True, text=True)
             self.assertEqual(r.returncode, 0, f"{f}: {r.stderr}")
+
+    def _status_without_session_id(self, script, user_dir):
+        env = dict(os.environ)
+        for k in ("CLAUDE_SESSION_ID", "CLAUDE_CODE_SESSION_ID"):
+            env.pop(k, None)
+        return subprocess.run(
+            ["bash", os.path.join(ROOT, "bin", script), "status", user_dir],
+            capture_output=True, text=True, env=env)
+
+    def test_status_finds_the_spool_without_claude_session_id(self):
+        # CLAUDE_SESSION_ID is substituted into a monitor's command line but is
+        # NOT exported into the Bash tool's environment, so `status` used to
+        # tail "<user>/sessions/none.requests.ndjson", print "(none yet)", and
+        # tell the agent nobody had registered while an accepted registration
+        # sat on disk. Both status actions must find the spool anyway.
+        import tempfile
+        with tempfile.TemporaryDirectory() as ud:
+            os.makedirs(os.path.join(ud, "sessions"))
+            reg = '{"kind": "contact_accepted", "name": "peer-that-registered"}'
+            msg = '{"kind": "message", "body": "message-that-arrived"}'
+            pathlib.Path(ud, "sessions", "abc.requests.ndjson").write_text(reg + "\n")
+            pathlib.Path(ud, "sessions", "abc.ndjson").write_text(msg + "\n")
+
+            r = self._status_without_session_id("invite-watch.sh", ud)
+            self.assertIn("peer-that-registered", r.stdout,
+                          f"invite-watch.sh status hid the registration: {r.stdout}")
+            self.assertNotIn("(none yet)", r.stdout)
+
+            r = self._status_without_session_id("follow.sh", ud)
+            self.assertIn("message-that-arrived", r.stdout,
+                          f"follow.sh status hid the message: {r.stdout}")
+            # the message spool, not the request spool
+            self.assertNotIn("peer-that-registered", r.stdout)
+
+
+class TestDocumentedCommandsExist(unittest.TestCase):
+    def test_never_tells_the_agent_to_run_retalk_version(self):
+        # retalk has no --version flag; the call exits 2 with an argparse usage
+        # error and prints nothing useful. It was the skill's own recovery
+        # instruction for "did the install take?", so a wrong answer there is a
+        # wrong answer at exactly the moment it matters.
+        for f in SKILLS:
+            for ln in pathlib.Path(f).read_text().splitlines():
+                if "retalk --version" not in ln:
+                    continue
+                self.assertIn("no `retalk --version`", ln,
+                              f"{f}: tells the agent to run retalk --version: "
+                              f"{ln.strip()}")
+
+    def test_send_and_receive_keep_the_message_log(self):
+        # Saving used to ride an `RETALK_SAVE_MESSAGE=1 ` prefix, which is easy
+        # to drop: a verification run produced a peer whose own replies were
+        # missing from `history` for exactly that reason. Every send/receive the
+        # skills show must carry `--save` inside the command instead.
+        for name in ("send", "receive"):
+            f = os.path.join(ROOT, "skills", name, "SKILL.md")
+            for ln in pathlib.Path(f).read_text().splitlines():
+                s = ln.strip()
+                if not s.startswith(f"retalk {name} "):
+                    continue
+                if "--help" in s:
+                    continue
+                self.assertIn("--save", s,
+                              f"skills/{name}: message would not be logged: {s}")
+
+    def test_session_map_block_does_not_use_the_unexported_variable(self):
+        # Same variable, other end: a pasted ${CLAUDE_SESSION_ID} expands to
+        # nothing in the Bash tool, so the session map lands at an empty
+        # filename and per-session delivery breaks with nothing reported.
+        text = pathlib.Path(ROOT, "skills", "init", "SKILL.md").read_text()
+        for ln in text.splitlines():
+            s = ln.strip()
+            if not s.startswith(("echo ", ": >>", "mkdir ")):
+                continue
+            self.assertNotIn("${CLAUDE_SESSION_ID}", s,
+                             f"skills/init: shell block expands an unexported "
+                             f"variable: {s}")
 
 
 if __name__ == "__main__":

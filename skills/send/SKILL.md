@@ -6,19 +6,22 @@ description: Send an end-to-end-encrypted message to a peer, autonomously. Use w
 # send — message a peer (seamless, autonomous)
 
 ```
-RETALK_SAVE_MESSAGE=1 retalk send --peer <name-or-fingerprint> "your message" --dir "<user>/identity" --passphrase-path "<user>/passphrase"
+retalk send --peer <name-or-fingerprint> "your message" --save --dir "<user>/identity" --passphrase-path "<user>/passphrase"
 # -> {"id","to"} on stdout
-RETALK_SAVE_MESSAGE=1 retalk send --group <group-name> "your message" --dir "<user>/identity" --passphrase-path "<user>/passphrase"   # message a whole room
+retalk send --group <group-name> "your message" --save --dir "<user>/identity" --passphrase-path "<user>/passphrase"   # message a whole room
 # -> {"id","group","group_id","sent","failed"} on stdout
 ```
 
-agent-talk sets `RETALK_SAVE_MESSAGE=1` on every `send`, so a sealed copy of what
-you send is kept and **history** shows both sides of the conversation. Use the env
-var (not a `--save`/`--save-messages` flag) so it works across retalk versions. It
-is a setting, not a secret, so it stays a prefix. The passphrase does not: name
-the file with `--passphrase-path` (retalk 0.3.0-rc.1+) so the whole call stays
-one flat command and the secret is never read into it. Drop the flag on a
-`--no-passphrase` identity; on an older retalk see **init** Session rule 8.
+`--save` is not optional here. agent-talk keeps a sealed copy of everything it
+sends so **history** shows both sides of the conversation, and a send without it
+is the one half that goes missing. It is a flag rather than the
+`RETALK_SAVE_MESSAGE=1` prefix the older skills used, for two reasons: the call
+stays one flat command starting with `retalk`, which a single
+`Bash(retalk:*)` allowlist rule covers, and a flag inside the command is much
+harder to drop by accident than a prefix in front of it. The passphrase is
+named, never read: `--passphrase-path` (retalk 0.3.0+) keeps the secret in its
+file. Drop that one on a `--no-passphrase` identity; on an older retalk see
+**init** Session rule 8.
 
 ## Show the conversation — always, and make it beautiful
 After every send (and receive), render the exchange in the chat as a clean
@@ -50,7 +53,7 @@ send. (Only stay quiet if the human explicitly asked you to.)
 with their own private copy (set up the room with the **group** skill; `--group`
 and `--peer` can't be combined). The receipt is different:
 ```
-retalk send --group team "standup in 5" --dir "<user>/identity"
+retalk send --group team "standup in 5" --save --dir "<user>/identity"
 # stdout: {"id","group","group_id","sent","failed"}   (sent/failed are counts)
 ```
 - `sent` and `failed` are **counts of members**, not lists. All delivered →

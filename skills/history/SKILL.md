@@ -16,7 +16,7 @@ Prints the messages this identity saved, as NDJSON
 or `"out"` (sent) — **both sides of the conversation interleaved by time**. Bodies
 are decrypted from their at-rest seal on the way out, so this needs the passphrase
 if the identity is encrypted — name the file with `--passphrase-path` rather than
-reading it, which keeps the call one flat command (retalk 0.3.0-rc.1+; drop the
+reading it, which keeps the call one flat command (retalk 0.3.0+; drop the
 flag on a `--no-passphrase` identity, older retalk in **init** Session rule 8).
 It **never contacts the relay**.
 
@@ -30,10 +30,12 @@ the **receive** skill, rather than a 1:1 thread. Keep threading on `group_id`, n
 the name (names are local labels and can differ between members). Messages
 without those fields stay 1:1 and render as before.
 
-agent-talk saves messages by default: it sets `RETALK_SAVE_MESSAGE=1` on every
-`send` and `receive`, so **both directions** land here going forward — no opt-in
-needed. (The env var works on every retalk version, so the plugin relies on it
-rather than the `--save` flag that shipped in retalk 0.0.12.) There is no
+agent-talk saves messages by default: it passes `--save` on every `send` and
+`receive`, so **both directions** land here going forward — no opt-in needed.
+(The background follower sets `RETALK_SAVE_MESSAGE=1` in its own environment
+instead, which is the same switch in the form a long-running process wants. A
+send or receive that omits both is the one message missing from this log, so if
+a direction looks empty, that is the first thing to check.) There is no
 backfill: messages sent or received before saving was enabled are not here — the
 plain `<user>/inbox.ndjson` spool remains the record of received mail from before.
 

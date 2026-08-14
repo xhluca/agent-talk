@@ -8,7 +8,7 @@
 #
 # Options for `start`:
 #   --passphrase-path PATH   unlock an encrypted identity by naming the file
-#                            that holds the passphrase (retalk 0.3.0-rc.1+).
+#                            that holds the passphrase (retalk 0.3.0+).
 #                            The watcher decrypts, so an encrypted identity
 #                            needs it. The passphrase is never read here;
 #                            retalk opens the file itself.
@@ -90,9 +90,26 @@ status)
   else
     echo "not watching"
   fi
-  echo "--- recent registrations (this session) ---"
-  tail -n 20 "$UD/sessions/${CLAUDE_SESSION_ID:-none}.requests.ndjson" 2>/dev/null \
-    || echo "(none yet)"
+  echo "--- recent registrations ---"
+  # Which spool to read. Claude Code substitutes ${CLAUDE_SESSION_ID} into a
+  # monitor's command line, but it does NOT export it into the environment of
+  # the Bash tool, so reading the variable here yields nothing and the status
+  # used to report "(none yet)" while accepted registrations sat on disk. Take
+  # the id from whatever is actually available, and otherwise read the most
+  # recently written request spool, which is this user's live session in every
+  # case that matters.
+  sid="${CLAUDE_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
+  spool=""
+  [ -n "$sid" ] && [ -f "$UD/sessions/$sid.requests.ndjson" ] \
+    && spool="$UD/sessions/$sid.requests.ndjson"
+  if [ -z "$spool" ]; then
+    spool="$(ls -1t "$UD"/sessions/*.requests.ndjson 2>/dev/null | head -n 1)"
+  fi
+  if [ -n "$spool" ] && [ -s "$spool" ]; then
+    tail -n 20 "$spool"
+  else
+    echo "(none yet)"
+  fi
   ;;
 
 esac

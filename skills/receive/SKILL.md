@@ -8,7 +8,7 @@ description: Read incoming retalk messages from this session's user's DESIGNATED
 `<user>` = this session's user directory (absolute path; resolved at **init**). Target it on every
 command with `--dir "<user>/identity"`; add
 `--passphrase-path "<user>/passphrase"` if the identity is encrypted (retalk
-0.3.0-rc.1+ — one flat command, the secret stays in the file; **init** Session
+0.3.0+ — one flat command, the secret stays in the file; **init** Session
 rule 8 has the older-retalk fallback). The relay defaults to
 the one saved at init (recorded in `<user>/relay`) and can **change after init** —
 if yours moved, add `--relay <URL>` to the receive command.
@@ -99,16 +99,19 @@ transcript** instead:
 ## One-shot read
 Individual (the usual case):
 ```
-RETALK_SAVE_MESSAGE=1 retalk receive --peer <peer> --dir "<user>/identity" --passphrase-path "<user>/passphrase"
+retalk receive --peer <peer> --save --dir "<user>/identity" --passphrase-path "<user>/passphrase"
 # NDJSON: {"id","from","name","text"}; auto-acked
 ```
-`RETALK_SAVE_MESSAGE=1` is a setting, not a secret, so it stays a prefix; the
-passphrase is named by path and never read into the command (drop the flag on a
-`--no-passphrase` identity).
+`--save` keeps the sealed at-rest copy that **history** replays; leave it off and
+the message is read once and gone. Keeping it inside the command, rather than the
+`RETALK_SAVE_MESSAGE=1` prefix the older skills used, means the whole call is one
+`retalk …` command a single `Bash(retalk:*)` rule can allow, and there is no
+prefix to drop by accident. The passphrase is named by path and never read into
+the command (drop that flag on a `--no-passphrase` identity).
 Contact-list mode — loop saved peers (per-peer, never `--all`; needs jq):
 ```
 retalk contacts --json --dir "<user>/identity" | jq -r .fingerprint | while read -r fp; do
-  [ -n "$fp" ] && RETALK_SAVE_MESSAGE=1 retalk receive --peer "$fp" --dir "<user>/identity" --passphrase-path "<user>/passphrase"
+  [ -n "$fp" ] && retalk receive --peer "$fp" --save --dir "<user>/identity" --passphrase-path "<user>/passphrase"
 done
 ```
 
@@ -133,19 +136,22 @@ your invite codes sends their request from an address you have not saved yet, an
 `retalk invite watch`, land in a separate per-session spool
 (`<user>/sessions/<session-id>.requests.ndjson`), and are pushed by the plugin's
 second monitor, `retalk-requests`. See the **id** skill, *Invite codes* (retalk
-0.3.0-rc.1 or newer). Once a peer has registered, they are an ordinary saved
+0.3.0 or newer). Once a peer has registered, they are an ordinary saved
 contact and their mail arrives here like anyone else's.
 
 ## Keeping a durable log (on by default)
-- agent-talk sets `RETALK_SAVE_MESSAGE=1` on every `receive` (shown above and in
-  the follower below), so each chat message also gets a **sealed at-rest copy**
+- agent-talk passes `--save` on every `receive` and every `send` (the follower
+  below sets `RETALK_SAVE_MESSAGE=1` instead, which is the same switch in the
+  form a long-running process wants), so each chat message gets a **sealed
+  at-rest copy**
   you can replay later with the **history** skill (no relay contact). This runs
   alongside the plain `<user>/inbox.ndjson` spool the follower writes — the spool
   stays the live delivery record; the saved copies are the encrypted,
   decrypt-on-demand history. **send** saves the same way, so **history** holds
   both sides of the conversation.
-- The env var is version-agnostic; use it (not a `--save`/`--save-messages`
-  flag) so the plugin works on both the installed retalk and newer releases.
+- Both forms have existed since retalk 0.0.12 and mean the same thing. Use the
+  flag in a command you write out, and the environment variable only where a
+  process inherits it (the follower, a systemd unit).
 - `--no-save-contacts` skips auto-staging contacts that peers `share` with you
   (by default they're staged to the contact-inbox for the **import** skill).
 
@@ -188,7 +194,7 @@ until stopped):
   so it also finds and stops a follower an older version of this skill started.
 - **Version floors.** The script's own `retalk receive --follow --interval
   --quiet` with repeatable `--peer` needs **retalk 0.2.0+**;
-  `--passphrase-path` needs **retalk 0.3.0-rc.1**. Drop `--passphrase-path` on
+  `--passphrase-path` needs **retalk 0.3.0**. Drop `--passphrase-path` on
   a `--no-passphrase` identity. On an older retalk, drop it as well and export
   `RETALK_PASSPHRASE` in the same shell before calling the script (**init**
   Session rule 8 and §1).

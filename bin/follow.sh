@@ -8,7 +8,7 @@
 #
 # Options for `start`:
 #   --passphrase-path PATH   unlock an encrypted identity by naming the file
-#                            that holds the passphrase (retalk 0.3.0-rc.1+).
+#                            that holds the passphrase (retalk 0.3.0+).
 #                            The passphrase is never read here; retalk opens
 #                            the file itself. On older retalk, leave this off
 #                            and export RETALK_PASSPHRASE before calling.
@@ -117,10 +117,24 @@ status)
     fi
   done
   [ "$running" = 1 ] || echo "not following"
-  echo "--- recent messages (this session's spool) ---"
-  tail -n 20 "$UD/sessions/${CLAUDE_SESSION_ID:-none}.ndjson" 2>/dev/null \
-    || tail -n 20 "$UD/inbox.ndjson" 2>/dev/null \
-    || echo "(none yet)"
+  echo "--- recent messages ---"
+  # Claude Code substitutes ${CLAUDE_SESSION_ID} into a monitor's command line
+  # but does not export it into the Bash tool's environment, so reading the
+  # variable here yields nothing. Take the id from whatever is available, else
+  # the most recently written session spool, else the legacy inbox.
+  sid="${CLAUDE_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
+  spool=""
+  [ -n "$sid" ] && [ -f "$UD/sessions/$sid.ndjson" ] \
+    && spool="$UD/sessions/$sid.ndjson"
+  if [ -z "$spool" ]; then
+    spool="$(ls -1t "$UD"/sessions/*.ndjson 2>/dev/null \
+             | grep -v '\.requests\.ndjson$' | head -n 1)"
+  fi
+  if [ -n "$spool" ] && [ -s "$spool" ]; then
+    tail -n 20 "$spool"
+  else
+    tail -n 20 "$UD/inbox.ndjson" 2>/dev/null || echo "(none yet)"
+  fi
   ;;
 
 esac
