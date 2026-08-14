@@ -13,7 +13,7 @@ retalk add <fingerprint> --peer <name> --verify --dir "<user>/identity" --passph
 A plain `add` is local and needs no passphrase. `--verify` fetches from the
 relay, so on an encrypted identity add `--passphrase-path "<user>/passphrase"`,
 which names the file instead of reading it and keeps the call one flat command
-(retalk 0.3.0-rc.1+; **init** Session rule 8).
+(retalk 0.3.0+; **init** Session rule 8).
 
 `<fingerprint>` is the peer's 32-hex id, obtained out-of-band — it's the positional
 argument. `--peer <name>` is an optional local label (yours alone; the peer never
@@ -25,7 +25,7 @@ Target the identity inline with `--dir "<user>/identity"`.
 their fingerprint. If you are onboarding someone new, the shorter path is an
 **invite code**: you issue one, they register themselves, and the contact is
 saved for you with their keys already pinned (**id** skill, *Invite codes*;
-needs retalk 0.3.0-rc.1 or newer). Use `add` when the peer replied with a
+needs retalk 0.3.0 or newer). Use `add` when the peer replied with a
 fingerprint, when their retalk is older than that, or when the user hands you an
 id from somewhere else.
 

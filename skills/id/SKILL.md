@@ -30,7 +30,7 @@ following message to your peer (the person you want to communicate with)."* Alwa
 **inline** with `--dir "<user>/identity"` (env vars like `RETALK_USER`
 are not used — they don't persist between commands). Encrypted identity? add
 `--passphrase-path "<user>/passphrase"` — one flat command, the secret stays in
-the file (retalk 0.3.0-rc.1+; **init** Session rule 8 has the older-retalk
+the file (retalk 0.3.0+; **init** Session rule 8 has the older-retalk
 fallback). No relay contact.
 
 > `<user>` = this session's **user directory** — an absolute path resolved at **init** (e.g. `~/.agent-talk/users/alice` (global) or `<project>/.agent-talk/users/alice` (local)). Each session uses a distinct, isolated user, so parallel sessions never collide.
@@ -52,7 +52,7 @@ offer the **verify** skill as the real check. Treat a code as a secret while it
 is live, hand it over the same off-band channel as the invite, and revoke one
 that leaks.
 
-**Version floor: retalk 0.3.0-rc.1.** Everything in this section needs it. On an
+**Version floor: retalk 0.3.0.** Everything in this section needs it. On an
 older retalk these commands do not exist, so fall back to the manual path: a
 codeless invite, the peer replies with their fingerprint, you **add** them.
 Both templates are in the **init** skill. Check once, and say which path you
@@ -79,7 +79,7 @@ retalk invite new --expires <days> --dir "<user>/identity"      # override the e
 Pass `--peer <name>` whenever you already know who the invite is for: the
 contact then lands under that local name instead of whatever name the requester
 suggests for themselves. Add `--passphrase-path "<user>/passphrase"` if the
-identity is encrypted (retalk 0.3.0-rc.1+, like everything else here — but
+identity is encrypted (retalk 0.3.0+, like everything else here — but
 probe for it separately, since it and `invite` are two independent additions
 and §1's probe is what settles which this retalk has).
 
@@ -112,17 +112,23 @@ sender's outbox stops resending it. Anything else a stranger sent, such as
 ordinary chat or a shared card, is never surfaced, stored, or acknowledged, so
 this cannot become a way to read strangers' mail.
 
-**One timing artefact worth knowing, so you never call it a lost message.** The
-relay hands mail over on fetch, so the watcher's scan does clear the pending
-copy of a stranger message it declines to act on. Nothing was acknowledged, so
-the sender's outbox re-delivers it by itself on the next resend cycle, which is
-the same at-least-once path that covers a `receive` that died mid-read. Where
-this shows up: while the watcher and a message follower are both running for
-this identity, a peer's first message can race their own registration and land
-while they are still a stranger. It then arrives a cycle late, at the sender's
-next send or sync, or about a minute if they are following. Report it as
-delayed, never as dropped, and note that stopping the watcher once every code is
-redeemed or revoked removes the overlap entirely.
+**The watcher does not compete with your message reader.** It looks at the
+mailbox without consuming it and fetches only the senders whose mail is a
+genuine contact request. Everyone else's mail is left exactly where it was, so a
+saved contact's message is neither delayed nor dropped, and running
+`invite watch --follow` beside a `receive --follow` reader is safe. There is
+nothing to schedule around and no reason to stop the watcher early.
+
+**This is the one thing that needs a modern relay, not just a modern client.**
+Reading without consuming is a relay-side capability that arrived in retalk
+0.3.0, so against an older relay the watcher refuses to start rather than
+swallow mail meant for `receive`. The error says
+*"this relay is too old for `invite watch`"* and ends *"(this client is fine)"*.
+Take that at face value: upgrading the local retalk changes nothing. The public relay
+`https://relay.retalk.dev` is already new enough. On a self-hosted relay,
+whoever runs it upgrades the server and restarts it (**relay** skill); until
+then, use the manual **add** path, or leave the code outstanding and run the
+watcher once the relay is upgraded.
 
 One-shot check (emits no records and exits when nothing is pending; it still
 prints a short banner on stderr unless you add `--quiet`):
@@ -150,9 +156,9 @@ is **one command**. Start it right after issuing a code:
   §1's probe reported a retalk without it (export `RETALK_PASSPHRASE` in the
   same shell before calling the script instead).
 - The default `--interval 10` is a calm rate while a code is outstanding; retalk
-  polls every 2 seconds if left to itself. **Stop the watcher** once every code
-  you issued has been redeemed or revoked; it exists for the onboarding window,
-  not for the whole session.
+  polls every 2 seconds if left to itself. Stopping it once every code is
+  redeemed or revoked is tidiness, not a requirement — it costs a little polling
+  and nothing else, and leaving it running does not affect message delivery.
 - `status` also prints the tail of this session's request spool, so it answers
   "is it running and who has registered" in one call.
 - The spool writer's `--stream requests` keeps these records in

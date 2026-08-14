@@ -12,7 +12,7 @@ retalk share --peer <recipient> <contact> --as <nickname> --dir "<user>/identity
 
 This one encrypts and sends, so an encrypted identity must be unlocked: name the
 passphrase file with `--passphrase-path` rather than reading it, which keeps the
-call one flat command (retalk 0.3.0-rc.1+; drop the flag on a `--no-passphrase`
+call one flat command (retalk 0.3.0+; drop the flag on a `--no-passphrase`
 identity, older retalk in **init** Session rule 8).
 
 Sends the Contact card for `<contact>` (a saved name or 32-hex id), encrypted, to

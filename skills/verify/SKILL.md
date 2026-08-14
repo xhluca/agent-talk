@@ -14,7 +14,7 @@ Checks the peer's keys against the saved fingerprint and records/pins them on
 success; refuses with **PIN MISMATCH** (possible relay tampering — stop) if they
 don't match. Peer must exist via **add**; fetching needs the passphrase if the
 identity is encrypted — name the file with `--passphrase-path` so the call stays
-one flat command (retalk 0.3.0-rc.1+; drop it on a `--no-passphrase` identity,
+one flat command (retalk 0.3.0+; drop it on a `--no-passphrase` identity,
 older retalk in **init** Session rule 8). Target the identity
 inline with `--dir "<user>/identity"`.
 

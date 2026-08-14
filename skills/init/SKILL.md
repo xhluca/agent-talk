@@ -82,7 +82,7 @@ never collide. Below, `<user>` is the chosen user's **absolute directory**.
    again every time. The passphrase file is the one chosen below,
    `<user>/passphrase` by default and recorded in `<user>/passphrase-path`. Add
    nothing at all for a `--no-passphrase` identity. **Needs retalk
-   0.3.0-rc.1**; §1 has the probe and the older-retalk fallback.
+   0.3.0**; §1 has the probe and the older-retalk fallback.
 9. **An invite code proves authorisation, not identity.** A peer who registers
    with one of this identity's invite codes has shown one thing: they were
    given the code by whoever issued it. Anyone who obtains the code can
@@ -100,29 +100,24 @@ already installed.
 
 **retalk** — install-or-upgrade in one shot from **PyPI**:
 ```
-uv tool install --upgrade --prerelease allow retalk   # installs if missing, upgrades if present
+uv tool install --upgrade retalk   # installs if missing, upgrades if present
 # no uv? fall back to:
-pip install -U --pre retalk                           # or: pip3 install -U --pre retalk
+pip install -U retalk              # or: pip3 install -U retalk
 ```
 Then confirm it runs: `retalk --help`.
 
-**The prerelease flag is load-bearing, so do not drop it.** The floor these
-skills need, retalk **0.3.0rc1**, is a release candidate, and both uv and pip
-ignore prereleases by default whenever a stable release also matches. Plain
-`uv tool install --upgrade retalk` therefore installs the older stable, reports
-success, and says nothing about the version it skipped; every
-`--passphrase-path` and every invite-code command then dies at argument parsing
-with `unrecognized arguments`. `--prerelease allow` (uv) and `--pre` (pip) are
-what make the floor reachable. They stay correct once a stable 0.3.0 or newer
-exists, because both resolvers still prefer the highest version, so leave them
-in rather than trying to decide whether they are still needed.
+**Do not add a prerelease flag.** Everything these skills need is in the stable
+release, so `--prerelease allow` (uv) and `--pre` (pip) buy nothing and cost
+something: they opt the user into every future release candidate, on this
+install and on every upgrade after it. Reach for one only if you are
+deliberately testing an unreleased retalk, and say so when you do.
 
 Prefer PyPI over source; only fall back to
 `uv tool install --upgrade "git+https://github.com/xhluca/retalk"` if you
 specifically need code that is not released at all.
 
 **Then check what this retalk can do — once, and remember the answer for the
-session.** Two things the skills use arrived in **retalk 0.3.0-rc.1**: the
+session.** Two things the skills use arrived in **retalk 0.3.0**: the
 `--passphrase-path` flag (Session rule 8) and the invite-code commands (**id**
 skill). An older retalk does not know either, and a command using them dies at
 argument parsing with `unrecognized arguments`, so probe rather than assume:
@@ -131,13 +126,31 @@ retalk sync --help 2>&1 | grep -q -- --passphrase-file && echo "passphrase by pa
 retalk invite --help >/dev/null 2>&1 && echo "invite codes available" || echo "older retalk: use the manual add path"
 ```
 **If either probe says "older retalk", suspect the install before you accept the
-fallback.** On a machine that has just run the command above, by far the most
-likely cause is that the prerelease flag was dropped, so the resolver quietly
-kept the older stable. Check with `retalk --version`: anything below 0.3.0rc1
-means re-run the install with `--prerelease allow` (or `--pre`) and probe again.
-Only treat the fallbacks below as the answer once a re-install with the flag
-still reports a version under the floor, which is what a genuinely pinned or
-offline environment looks like.
+fallback.** On a machine that has just run the command above, the likely cause
+is that the install did not take — a pinned version, a stale shim earlier on
+PATH, or no network. Read the installed version from the installer, not from
+retalk: **there is no `retalk --version`**, and asking for one exits 2 with an
+argparse usage error that says nothing about the version.
+```
+uv tool list | grep retalk        # e.g. "retalk v0.3.0"
+pip show retalk | head -2         # if it was installed with pip
+```
+Anything below 0.3.0 means re-run the install and probe again. Only treat the
+fallbacks below as the answer once a re-install still reports a version under
+the floor, which is what a genuinely pinned or offline environment looks like.
+
+**One capability is not the client's to have: `invite watch` also needs a
+relay on retalk 0.3.0 or newer.** Watching reads the mailbox without consuming
+it, and an older relay cannot do that, so the watcher refuses to start rather
+than swallow mail meant for `receive`. The client cannot probe for this ahead of
+time; you find out when you start the watcher, and the error says so plainly. It
+begins *"this relay is too old for `invite watch`"* and ends *"(this client is
+fine)"*. Read that literally — upgrading retalk locally
+will not help. On the public relay `https://relay.retalk.dev` this is already
+done. On a self-hosted relay, whoever runs it upgrades the server and restarts
+it (**relay** skill); until then, invite codes still work and the peer's
+registration is picked up by running the watcher after the relay is upgraded, or
+you fall back to the manual **add** path.
 
 The environment-variable fallback, for older retalk only: `RETALK_PASSPHRASE="$(cat <user>/passphrase)" retalk sync --dir <user>/identity`.
 It works, but it is a compound command that reads the secret out of its file, so
@@ -306,7 +319,7 @@ retalk sync --dir "<user>/identity" --passphrase-path "<PP_FILE>"   # drop the f
   **single-use** code per invite unless the user asks for a code they can hand
   to several people or reuse over time; only then make it **permanent**. The
   exact commands are in the **id** skill under *Invite codes*; they need
-  **retalk 0.3.0-rc.1 or newer**, and on an older retalk you fall back to the
+  **retalk 0.3.0 or newer**, and on an older retalk you fall back to the
   codeless invite and reply below. Read Session rule 9 before you describe the
   code to anyone: it proves the holder was authorised, not who they are.
 - **Show the user the invite + reply messages — MANDATORY, never summarize
@@ -482,8 +495,9 @@ echo auto > "<user>/check-mode"      # or: echo manual > "<user>/check-mode"
   Start the invite watcher (**id** skill, *Invite codes* → *Watch for
   registrations*) in the same turn as the code, so the peer's registration
   surfaces the moment it lands instead of sitting unread. This is not a question
-  for the user: a code with nothing watching for it does nothing. Stop the
-  watcher once every code has been redeemed or revoked.
+  for the user: a code with nothing watching for it does nothing. It is safe
+  beside the message follower, so there is no need to stop it on a schedule;
+  stop it once the codes are spent if you want, or leave it.
 
 ## 3. Live-collision guard (reuse or create)
 If a follower is already running for this user, another live session is using it —
@@ -501,13 +515,23 @@ Code** — skip this step on other agents (e.g. codex, Antigravity, pi, opencode
 Copilot CLI).
 On Antigravity and Copilot CLI, check mail with the **receive** skill on demand;
 on pi, use step 4b instead; on opencode, step 4c; on Codex, step 4d.
+**Write the session id out literally; do not paste `${CLAUDE_SESSION_ID}`.**
+Claude Code substitutes that placeholder into a *monitor's* command line, which
+is why `monitors.json` uses it, but it does **not** export it into the Bash
+tool's environment. A block pasted as written therefore expands to nothing and
+silently creates `by-session/` with an empty filename and a spool called
+`.ndjson`, which breaks per-session delivery in a way nothing reports. Use the
+session id you already know, spelled out — below, `<session-id>`:
 ```
 mkdir -p "$HOME/.agent-talk/by-session" "<user>/sessions"
-echo "<user>" > "$HOME/.agent-talk/by-session/${CLAUDE_SESSION_ID}"
-: >> "<user>/sessions/${CLAUDE_SESSION_ID}.ndjson"           # this session's message spool
-: >> "<user>/sessions/${CLAUDE_SESSION_ID}.requests.ndjson"  # and its contact-request spool
+echo "<user>" > "$HOME/.agent-talk/by-session/<session-id>"
+: >> "<user>/sessions/<session-id>.ndjson"           # this session's message spool
+: >> "<user>/sessions/<session-id>.requests.ndjson"  # and its contact-request spool
 python3 "<plugin>/bin/spool-writer.py" --user "<user>" --gc   # sweep dead sessions
 ```
+If you cannot determine the session id, `echo "$CLAUDE_CODE_SESSION_ID"` is set
+in the Bash tool on current Claude Code and holds it. Check that it printed
+something before you build any path out of it.
 Incoming messages are copied to a spool **per session**, not one file per
 identity, so parallel sessions on the same identity never consume each other's
 mail and the decrypted text goes away with the session. The durable record is

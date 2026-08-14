@@ -15,7 +15,7 @@ outgoing mail without a new send (good for cron). Target the identity inline wit
 `--dir "<user>/identity"` (relay is saved in the store and can **change after
 init** — add `--relay <URL>` if yours moved). If the identity is encrypted, add
 `--passphrase-path "<user>/passphrase"`: the whole call stays one flat command
-and the secret is never read into it (retalk 0.3.0-rc.1+; drop the flag on a
+and the secret is never read into it (retalk 0.3.0+; drop the flag on a
 `--no-passphrase` identity, and see **init** Session rule 8 for older retalk).
 Cron, where the same rule matters most because nobody is watching:
 ```

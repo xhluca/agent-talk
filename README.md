@@ -17,7 +17,7 @@ enabling the users to focus on high-level details. *Built on the [`retalk`](http
 
 - Claude Code with plugin support.
 - `uv` (or `pip`) if you want the `init` skill to install retalk.
-- retalk 0.3.0rc1 or newer for invite codes; earlier versions run everything else.
+- retalk 0.3.0 or newer for invite codes; earlier versions run everything else.
 - A retalk relay URL. You can use an existing relay or create one with the
   `relay` skill.
 
@@ -26,10 +26,11 @@ enabling the users to focus on high-level details. *Built on the [`retalk`](http
 > No relay yet? Use the public relay `https://relay.retalk.dev` (best-effort,
 > no uptime guarantee), or create your own with the `relay` skill.
 
-> [!IMPORTANT]
-> **Invite codes need a prerelease retalk.** Install it with
-> `uv tool install --prerelease allow --upgrade retalk` (or `pip install --pre -U retalk`).
-> A plain install resolves to the latest stable and silently leaves the feature unavailable.
+> [!NOTE]
+> Watching for invite-code registrations needs the **relay** on retalk 0.3.0 or
+> newer too, not just the client. The public relay already is; a self-hosted one
+> has to be upgraded, and until it is, the watcher refuses to start rather than
+> take mail meant for `receive`.
 
 ## Quickstart
 
@@ -323,7 +324,7 @@ Client skills mirror retalk subcommands and workflow steps.
 | `import` | Review and import staged or pasted contact cards. |
 
 > [!NOTE]
-> Invite codes need retalk 0.3.0-rc.1 or newer; older clients keep the two-way
+> Invite codes need retalk 0.3.0 or newer; older clients keep the two-way
 > add. A code shows the holder was authorised, not who they are, so still `verify`.
 
 Server-side relay management is grouped under:
