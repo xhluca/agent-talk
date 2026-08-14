@@ -603,11 +603,28 @@ a new user message. Register the hooks once (idempotent, appends to
 ```
 python3 <plugin>/extensions/codex/install-hooks.py
 ```
-Then relaunch Codex with this session's spool, since environment variables must
-be set before the process starts:
+**Then register a spool for this user, which Codex needs just as much as Claude
+Code does.** The spool writer copies each record only to sessions listed in
+`~/.agent-talk/by-session/`, so with nothing registered there is nowhere for a
+message or a contact registration to be delivered, and auto-receive is inert
+however the hooks are configured. Step 4 is the Claude Code version of this and
+is skipped here; do the same thing with Codex's own id, which the shell has as
+`$CODEX_THREAD_ID`:
+```
+mkdir -p "$HOME/.agent-talk/by-session" "<user>/sessions"
+echo "<user>" > "$HOME/.agent-talk/by-session/<thread-id>"
+: >> "<user>/sessions/<thread-id>.ndjson"           # this session's message spool
+: >> "<user>/sessions/<thread-id>.requests.ndjson"  # and its contact-request spool
+```
+Read `<thread-id>` with `echo "$CODEX_THREAD_ID"` and write it out literally, as
+in step 4. Any unique id works, because the spool is just a file and the launch
+below names its path; the thread id is simply one that will not collide.
+
+Then relaunch Codex with that spool, since environment variables must be set
+before the process starts:
 ```
 # add this user's spool to any already set, then start codex:
-AGENT_TALK_CODEX_SPOOLS="$(printf '%s%s' "${AGENT_TALK_CODEX_SPOOLS:+$AGENT_TALK_CODEX_SPOOLS:}" "<user>/sessions/<session-id>.ndjson")" codex
+AGENT_TALK_CODEX_SPOOLS="$(printf '%s%s' "${AGENT_TALK_CODEX_SPOOLS:+$AGENT_TALK_CODEX_SPOOLS:}" "<user>/sessions/<thread-id>.ndjson")" codex
 ```
 Codex skips hooks it has not been told to trust: the first session prints a
 review warning, and the user approves the three agent-talk entries once under

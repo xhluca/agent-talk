@@ -142,6 +142,11 @@ status)
   if [ -z "$spool" ]; then
     spool="$(ls -1t "$UD"/sessions/*.requests.ndjson 2>/dev/null | head -n 1)"
   fi
+  # Last resort: the per-identity file the writer uses when no session is
+  # registered, which is every host other than Claude Code.
+  if [ -z "$spool" ] || [ ! -s "$spool" ]; then
+    [ -s "$UD/requests.ndjson" ] && spool="$UD/requests.ndjson"
+  fi
   if [ -n "$spool" ] && [ -s "$spool" ]; then
     tail -n 20 "$spool"
   else

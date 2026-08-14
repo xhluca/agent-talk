@@ -146,6 +146,32 @@ class TestSpoolWriter(unittest.TestCase):
         self.assertEqual(mode, 0o600, f"spool mode {oct(mode)} should be 0600")
         print("PASS 6: contact requests get their own 0600 per-session spool")
 
+    def test_a_registration_with_no_registered_session_is_not_lost(self):
+        # Only Claude Code writes the session map, so on every other host the
+        # registry is empty. The requests stream had no fallback, so a peer
+        # could register, the watcher could save and pin them, and the record
+        # saying so was written nowhere: verification on Codex found an
+        # inviter whose agent reported "no registrations have arrived" while
+        # the contact was already in its address book.
+        self.run_writer(
+            ['{"kind":"contact_accepted","code":"wS7n","from":"ff","name":"sam"}'],
+            "--stream", "requests")
+
+        fallback = os.path.join(self.user, "requests.ndjson")
+        self.assertTrue(os.path.exists(fallback),
+                        "an accepted registration was discarded")
+        self.assertEqual([r["name"] for r in self.read(fallback)], ["sam"])
+        self.assertFalse(os.path.exists(os.path.join(self.user, "inbox.ndjson")),
+                         "a registration must never land in the chat inbox")
+        print("PASS 8: a registration survives a host with no session map")
+
+    def test_messages_honor_no_legacy_even_with_no_session(self):
+        # The message stream's fallback is the legacy file, so --no-legacy
+        # still means what it says when nothing is registered.
+        self.run_writer(['{"id":"m1","text":"dropped"}'], "--no-legacy")
+        self.assertFalse(os.path.exists(os.path.join(self.user, "inbox.ndjson")))
+        print("PASS 9: --no-legacy is still honored with no registered session")
+
     def test_gc_sweeps_request_spools_by_session_liveness(self):
         self.register("s-live", self.user)
         self.register("s-dead", self.user)

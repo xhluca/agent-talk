@@ -43,8 +43,13 @@ requests: peers who presented one of this identity's invite codes and were
 registered as contacts. Those records go to
 `<user>/sessions/<session-id>.requests.ndjson` and are never mixed into the
 message spool, because they are not conversation turns and a session that
-renders them as chat would be wrong. The requests stream has no legacy
-per-identity file; it is new, so nothing reads one.
+renders them as chat would be wrong.
+
+If no session is registered for this user, a record still has to go somewhere:
+it lands in a per-identity file, `<user>/inbox.ndjson` for messages and
+`<user>/requests.ndjson` for contact requests. Only Claude Code writes the
+session map, so on every other host that is the normal case, and without this
+an accepted registration was discarded in silence.
 """
 
 import argparse
@@ -69,6 +74,12 @@ REGISTRY = os.path.join("~", ".agent-talk", "by-session")
 # Each stream gets its own spool suffix, so one session can carry both without
 # the two ever landing in the same file.
 STREAM_SUFFIX = {"messages": ".ndjson", "requests": ".requests.ndjson"}
+
+# Where a record goes when no session is registered for this user. Only Claude
+# Code writes the session map, so on every other host that is the normal state,
+# and without a fallback an accepted registration was written nowhere at all:
+# the watcher saved the contact and the record that says so vanished.
+STREAM_FALLBACK = {"messages": "inbox.ndjson", "requests": "requests.ndjson"}
 
 
 def registry_dir():
@@ -183,6 +194,15 @@ def stream(args):
             append(spool, line, args.max_bytes)
         if legacy:
             append(os.path.join(user_dir, "inbox.ndjson"), line, args.max_bytes)
+        elif args.stream == "requests" and not spools:
+            # Nowhere else to put it, and dropping it silently is the worst
+            # outcome available: the watcher saves the contact either way, so
+            # the record is the only thing that says a peer registered. Keep a
+            # per-identity copy, which the id skill's `status` block reads as
+            # its last resort. The message stream has the same fallback under
+            # its own name, governed by --legacy just above.
+            append(os.path.join(user_dir, STREAM_FALLBACK[args.stream]),
+                   line, args.max_bytes)
         if args.wake_codex and spools:
             # After the record is safely in the spool; a failed wake costs
             # nothing but the bounded attempt, and hooks still deliver.

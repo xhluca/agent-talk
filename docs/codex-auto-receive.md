@@ -187,9 +187,12 @@ to say "check your inbox" would buy nothing.
   started with `--remote` takes its working directory from the daemon, not
   from where you launched the TUI. Start `codex-with-daemon` from the
   project directory the daemon should serve.
-- **Hook trust must be granted for real.** For attached sessions,
-  `--dangerously-bypass-hook-trust` on the TUI does not arm the hooks;
-  review and trust them once under `/hooks` (press `t`).
+- **Hook trust has to be granted once.** Review and trust the three agent-talk
+  entries under `/hooks` (press `t`); trust is recorded against the hook's hash
+  and persists until the hook changes. Automation that vets its own hook
+  sources can pass `--dangerously-bypass-hook-trust` instead, which does arm
+  the hooks for an attached session (verified on 0.147) for that invocation
+  only.
 
 ## What does not work, and why
 

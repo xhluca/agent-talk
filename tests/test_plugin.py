@@ -260,6 +260,20 @@ class TestBinScripts(unittest.TestCase):
             # the message spool, not the request spool
             self.assertNotIn("peer-that-registered", r.stdout)
 
+    def test_status_falls_back_to_the_per_identity_request_file(self):
+        # On a host with no session map the writer keeps registrations in
+        # <user>/requests.ndjson. `status` has to read that too, or it reports
+        # "(none yet)" for a peer who has in fact been saved.
+        import tempfile
+        with tempfile.TemporaryDirectory() as ud:
+            os.makedirs(os.path.join(ud, "sessions"))
+            pathlib.Path(ud, "requests.ndjson").write_text(
+                '{"kind": "contact_accepted", "name": "peer-that-registered"}\n')
+            r = self._status_without_session_id("invite-watch.sh", ud)
+            self.assertIn("peer-that-registered", r.stdout,
+                          f"invite-watch.sh status hid the registration: "
+                          f"{r.stdout}")
+
 
 class TestDocumentedCommandsExist(unittest.TestCase):
     def test_never_tells_the_agent_to_run_retalk_version(self):
