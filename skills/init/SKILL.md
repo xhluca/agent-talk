@@ -127,7 +127,7 @@ retalk invite --help >/dev/null 2>&1 && echo "invite codes available" || echo "o
 ```
 **If either probe says "older retalk", suspect the install before you accept the
 fallback.** On a machine that has just run the command above, the likely cause
-is that the install did not take — a pinned version, a stale shim earlier on
+is that the install did not take: a pinned version, a stale shim earlier on
 PATH, or no network. Read the installed version from the installer, not from
 retalk: **there is no `retalk --version`**, and asking for one exits 2 with an
 argparse usage error that says nothing about the version.
@@ -145,7 +145,7 @@ it, and an older relay cannot do that, so the watcher refuses to start rather
 than swallow mail meant for `receive`. The client cannot probe for this ahead of
 time; you find out when you start the watcher, and the error says so plainly. It
 begins *"this relay is too old for `invite watch`"* and ends *"(this client is
-fine)"*. Read that literally — upgrading retalk locally
+fine)"*. Read that literally, because upgrading retalk locally
 will not help. On the public relay `https://relay.retalk.dev` this is already
 done. On a self-hosted relay, whoever runs it upgrades the server and restarts
 it (**relay** skill); until then, invite codes still work and the peer's
@@ -525,7 +525,7 @@ is why `monitors.json` uses it, but it does **not** export it into the Bash
 tool's environment. A block pasted as written therefore expands to nothing and
 silently creates `by-session/` with an empty filename and a spool called
 `.ndjson`, which breaks per-session delivery in a way nothing reports. Use the
-session id you already know, spelled out — below, `<session-id>`:
+session id you already know, spelled out as `<session-id>` below:
 ```
 mkdir -p "$HOME/.agent-talk/by-session" "<user>/sessions"
 echo "<user>" > "$HOME/.agent-talk/by-session/<session-id>"

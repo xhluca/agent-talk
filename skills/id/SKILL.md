@@ -157,7 +157,7 @@ is **one command**. Start it right after issuing a code:
   same shell before calling the script instead).
 - The default `--interval 10` is a calm rate while a code is outstanding; retalk
   polls every 2 seconds if left to itself. Stopping it once every code is
-  redeemed or revoked is tidiness, not a requirement — it costs a little polling
+  redeemed or revoked is tidiness, not a requirement: it costs a little polling
   and nothing else, and leaving it running does not affect message delivery.
 - `status` also prints the tail of this session's request spool, so it answers
   "is it running and who has registered" in one call.

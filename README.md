@@ -112,7 +112,7 @@ reboot, so the launcher is the simplest way to get the daemon up.
 
 The daemon runs from the standalone install the Codex installer manages, at a
 fixed path under `$CODEX_HOME`, so an npm-installed `codex` on its own is not
-enough — `codex app-server daemon start` says so and names the fix:
+enough. `codex app-server daemon start` says so and names the fix:
 `curl -fsSL https://chatgpt.com/codex/install.sh | sh`. Details, including what
 a pushed message can do once it arrives, are in
 [docs/codex-auto-receive.md](docs/codex-auto-receive.md).

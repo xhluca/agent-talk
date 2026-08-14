@@ -31,7 +31,7 @@ the name (names are local labels and can differ between members). Messages
 without those fields stay 1:1 and render as before.
 
 agent-talk saves messages by default: it passes `--save` on every `send` and
-`receive`, so **both directions** land here going forward — no opt-in needed.
+`receive`, so **both directions** land here going forward, with no opt-in needed.
 (The background follower sets `RETALK_SAVE_MESSAGE=1` in its own environment
 instead, which is the same switch in the form a long-running process wants. A
 send or receive that omits both is the one message missing from this log, so if
