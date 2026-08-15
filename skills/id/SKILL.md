@@ -172,11 +172,14 @@ Two record kinds arrive on that spool. Key off `kind`:
 - **`{"kind":"contact_accepted","code","from","name","card"}`** — a peer
   registered. **Tell the user unprompted**: who registered (the `name`, with the
   `from` fingerprint), that the invite code was the only check made, and that
-  **verify** is how they confirm the keys belong to the person they meant. Then
-  act like the **add** skill's *honor the delivery mode* step: if
-  `<user>/receive-from` is unset, write this peer's name to it, and if
-  `<user>/check-mode` is `auto`, start the message follower and Monitor
-  (**receive** skill) so their first message surfaces. Sending them a short
+  **verify** is how they confirm the keys belong to the person they meant.
+  Delivery is already handled: the watcher widens `<user>/receive-from` to cover
+  the new peer (to their name if it was unset, otherwise to `*contacts*`) and,
+  when `<user>/check-mode` is `auto`, restarts the follower with the new peer
+  included, keeping the options it was running with. So do not re-point
+  `receive-from` or start a second follower; just make sure the **Monitor** for
+  this user is running (**receive** skill) so the first message surfaces on a
+  host that needs one. Sending them a short
   hello is a good way to confirm the link, since they have no other way to learn
   they were accepted. If the code was single-use, it is now spent; if it was
   permanent and the onboarding is done, revoke it.

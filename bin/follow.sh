@@ -115,6 +115,14 @@ start)
 
 __run)
   echo $$ > "$PID"
+  # Record the options (not the peers) this follower is running with, so
+  # anything that has to restart it can put them back. invite-watch.sh does
+  # exactly that when a new peer registers, and dropping --wake-codex on the
+  # way through would quietly stop an idle Codex session from receiving.
+  : > "$UD/follow.opts"
+  [ -n "$pp" ] && printf '%s\n%s\n' "--passphrase-path" "$pp" >> "$UD/follow.opts"
+  printf '%s\n%s\n' "--interval" "$interval" >> "$UD/follow.opts"
+  for o in "${writer_opts[@]}"; do printf '%s\n' "$o" >> "$UD/follow.opts"; done
   # The supervised loop. retalk exits on a relay hiccup or a rotated session;
   # restarting it after a short pause is what keeps a session-long listener
   # alive. Records go to the writer, which fans them out to every session

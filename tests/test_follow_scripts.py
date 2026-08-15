@@ -92,5 +92,111 @@ class TestFollowScript(unittest.TestCase):
             self.assertNotIn("RETALK_PASSPHRASE=", text)
 
 
+ACCEPTED = ('{"kind": "contact_accepted", "code": "abc", "from": "%s", '
+            '"name": "carol", "card": {}}' % ("f" * 32))
+
+
+class TestAcceptanceCoversTheNewPeer(unittest.TestCase):
+    """A peer who registers with an invite code must end up in the delivery path.
+
+    The watcher saved the contact but nothing followed it: `receive-from` was
+    only written when it happened to be empty, and a running follower's peer
+    list is fixed when it starts. So the first message from a brand-new peer,
+    which is the whole point of an invite code, sat on the relay until someone
+    ran `receive` naming them.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.user = self._tmp.name
+
+    def tearDown(self):
+        run(FOLLOW, "stop", self.user)
+        self._tmp.cleanup()
+
+    def accept(self, env=None):
+        """Run the watcher's acceptance handler on one contact_accepted line."""
+        script = (f'source "{WATCH}" status "{self.user}" >/dev/null 2>&1; '
+                  f"cover_contact '{ACCEPTED}'")
+        return subprocess.run(["bash", "-c", script], capture_output=True,
+                              text=True, timeout=60,
+                              env={**os.environ, **(env or {})})
+
+    def write(self, name, value):
+        pathlib.Path(self.user, name).write_text(value + "\n")
+
+    def read(self, name):
+        return pathlib.Path(self.user, name).read_text().strip()
+
+    def test_receive_from_is_set_when_it_was_unset(self):
+        self.write("check-mode", "manual")
+        self.accept()
+        self.assertEqual(self.read("receive-from"), "carol")
+
+    def test_receive_from_widens_when_it_names_someone_else(self):
+        # The regression: an inviter already talking to bob kept receive-from
+        # at "bob", so carol's first message was never drained.
+        self.write("check-mode", "manual")
+        self.write("receive-from", "bob")
+        self.accept()
+        self.assertEqual(self.read("receive-from"), "*contacts*")
+
+    def test_an_all_contacts_scope_is_left_alone(self):
+        self.write("check-mode", "manual")
+        self.write("receive-from", "*contacts*")
+        self.accept()
+        self.assertEqual(self.read("receive-from"), "*contacts*")
+
+    def test_manual_mode_widens_the_scope_but_starts_no_follower(self):
+        # Manual is a deliberate choice to read on demand; do not override it.
+        self.write("check-mode", "manual")
+        self.write("receive-from", "bob")
+        self.accept()
+        self.assertEqual(self.read("receive-from"), "*contacts*")
+        self.assertEqual(list(pathlib.Path(self.user).glob("follow.*.pid")), [])
+
+    def test_auto_mode_restarts_the_follower_covering_the_new_peer(self):
+        stub = pathlib.Path(self.user, "stub")
+        stub.mkdir()
+        (stub / "retalk").write_text(
+            '#!/usr/bin/env bash\n'
+            'case "$*" in\n'
+            '  *"contacts --json"*) echo \'{"name": "bob"}\'; echo \'{"name": "carol"}\' ;;\n'
+            '  *) sleep 1 ;;\n'
+            'esac\n')
+        (stub / "retalk").chmod(0o755)
+
+        self.write("check-mode", "auto")
+        self.write("receive-from", "bob")
+        r = self.accept(env={"PATH": f"{stub}:{os.environ['PATH']}"})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.read("receive-from"), "*contacts*")
+        pids = [p.name for p in pathlib.Path(self.user).glob("follow.*.pid")]
+        self.assertTrue(any("carol" in p for p in pids),
+                        f"no follower covers carol: {pids}")
+
+    def test_a_restart_keeps_the_options_the_follower_had(self):
+        # Losing --wake-codex here would silently stop an idle Codex session
+        # from receiving, which is the feature the restart exists to serve.
+        self.write("check-mode", "auto")
+        self.write("receive-from", "bob")
+        pathlib.Path(self.user, "follow.opts").write_text(
+            "--interval\n5\n--wake-codex\n")
+        stub = pathlib.Path(self.user, "stub")
+        stub.mkdir()
+        (stub / "retalk").write_text(
+            '#!/usr/bin/env bash\n'
+            'case "$*" in\n'
+            '  *"contacts --json"*) echo \'{"name": "carol"}\' ;;\n'
+            '  *) echo "$*" >> "$AT_TEST_LOG"; sleep 1 ;;\n'
+            'esac\n')
+        (stub / "retalk").chmod(0o755)
+        self.accept(env={"PATH": f"{stub}:{os.environ['PATH']}"})
+
+        opts = pathlib.Path(self.user, "follow.opts").read_text().split()
+        self.assertIn("--wake-codex", opts)
+        self.assertIn("5", opts)
+
+
 if __name__ == "__main__":
     unittest.main()

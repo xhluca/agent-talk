@@ -35,11 +35,19 @@ are fetched/verified on first `send`/`receive`, or run **verify** now — or pas
 
 ## After adding: honor the delivery mode (init → *Session rules*)
 Read `<user>/check-mode` and **act — never end an add asking "want me to start
-a listener?"**: `auto` → if `<user>/receive-from` is unset write this peer's
-name to it, then silently start the follower + Monitor if not already running
-(blocks: **receive** skill) and note that replies will surface automatically;
-`manual` → nothing; missing → ask once (Auto-receive "(Recommended)" first),
-record to `<user>/check-mode`, act.
+a listener?"**: `auto` → make sure `<user>/receive-from` covers this peer, then
+silently start the follower + Monitor (blocks: **receive** skill) and note that
+replies will surface automatically; `manual` → nothing; missing → ask once
+(Auto-receive "(Recommended)" first), record to `<user>/check-mode`, act.
+
+**Covering the peer means widening the scope, not only filling a blank.** Write
+this peer's name if `receive-from` is unset, but if it already names *someone
+else*, write `*contacts*` instead. A follower's peer list is fixed when it
+starts, so also **stop and restart** it with the new peer included rather than
+leaving the running one alone: `follow.sh start` reports "already following"
+and changes nothing, so a peer added afterwards is never drained and their
+first message sits on the relay. `invite watch` does this for itself when a
+peer registers with a code.
 
 ## After adding: share your address back (off-band) — ALWAYS show the message
 A peer you `add` still needs YOUR address to reach you — unless they already have

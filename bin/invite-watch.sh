@@ -53,6 +53,8 @@ while [ $# -gt 0 ]; do
 done
 
 PID="$UD/invite-watch.pid"
+pp_args=()
+[ -n "$pp" ] && pp_args=(--passphrase-path "$pp")
 
 # `kill -0` succeeds on a zombie, which is what a dead watcher becomes whenever
 # nothing reaps it (PID 1 in a container is often not an init). Believing it
@@ -69,6 +71,72 @@ alive() {
   fi
   case "$(ps -o stat= -p "$pid" 2>/dev/null)" in *Z*) return 1 ;; esac
   return 0
+}
+
+# A registration saves the contact, but nothing yet delivers their mail.
+# `receive-from` names the follower's scope and was chosen before this peer
+# existed, and a running follower's peer list is fixed when it starts. So the
+# first thing a brand-new peer sends, which is the entire point of an invite
+# code, would sit on the relay until someone ran `receive` naming them. Widen
+# the scope here, where the acceptance is already known, rather than leaving it
+# to the agent noticing the spool record: on a host with no request monitor it
+# never sees one.
+cover_contact() {
+  line="$1"
+  name="$(printf '%s' "$line" | python3 -c 'import json,sys
+try:
+    print(json.load(sys.stdin).get("name") or "")
+except Exception:
+    print("")' 2>/dev/null)"
+  [ -n "$name" ] || return 0
+
+  rf=""
+  [ -r "$UD/receive-from" ] && rf="$(tr -d '[:space:]' < "$UD/receive-from")"
+  case "$rf" in
+    "")                    printf '%s\n' "$name" > "$UD/receive-from"; rf="$name" ;;
+    "$name"|'*contacts*')  ;;   # already covers this peer
+    *)                     printf '%s\n' '*contacts*' > "$UD/receive-from"
+                           rf='*contacts*' ;;
+  esac
+
+  # Only `auto` keeps a live follower. `manual` is a deliberate choice to read
+  # on demand, so widening the recorded scope is all that is wanted there.
+  mode=""
+  [ -r "$UD/check-mode" ] && mode="$(tr -d '[:space:]' < "$UD/check-mode")"
+  [ "$mode" = auto ] || return 0
+
+  new_peers=()
+  if [ "$rf" = '*contacts*' ]; then
+    while IFS= read -r p; do
+      [ -n "$p" ] && new_peers+=("$p")
+    done < <(retalk contacts --json --dir "$UD/identity" "${pp_args[@]}" 2>/dev/null \
+             | python3 -c 'import json,sys
+for line in sys.stdin:
+    line = line.strip()
+    if not line:
+        continue
+    try:
+        d = json.loads(line)
+    except Exception:
+        continue
+    n = d.get("name") or d.get("fingerprint")
+    if n:
+        print(n)' 2>/dev/null)
+  else
+    new_peers=("$rf")
+  fi
+  [ ${#new_peers[@]} -gt 0 ] || new_peers=("$name")
+
+  opts=()
+  if [ -r "$UD/follow.opts" ]; then
+    while IFS= read -r o; do [ -n "$o" ] && opts+=("$o"); done < "$UD/follow.opts"
+  elif [ -n "$pp" ]; then
+    opts=(--passphrase-path "$pp")
+  fi
+
+  "$HERE/follow.sh" stop "$UD" >/dev/null 2>&1
+  "$HERE/follow.sh" start "$UD" "${new_peers[@]}" "${opts[@]}" \
+    >> "$UD/invite-watch.err" 2>&1
 }
 
 case "$action" in
@@ -104,11 +172,20 @@ start)
 
 __run)
   echo $$ > "$PID"
-  pp_args=()
-  [ -n "$pp" ] && pp_args=(--passphrase-path "$pp")
   while true; do
+    # The middle stage passes every record through untouched and, on an
+    # acceptance, widens delivery to cover the peer who just registered. It
+    # runs in the background so the record still reaches the spool at once:
+    # restarting the follower takes about a second, and the registration
+    # should not wait behind it.
     retalk invite watch --follow --interval "$interval" --quiet \
         --dir "$UD/identity" "${pp_args[@]}" 2>> "$UD/invite-watch.err" \
+      | while IFS= read -r line; do
+          printf '%s\n' "$line"
+          case "$line" in
+            *'"contact_accepted"'*) cover_contact "$line" & ;;
+          esac
+        done \
       | python3 "$WRITER" --user "$UD" --stream requests 2>> "$UD/invite-watch.err"
     sleep 2
   done
