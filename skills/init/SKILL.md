@@ -139,6 +139,25 @@ Anything below 0.3.0 means re-run the install and probe again. Only treat the
 fallbacks below as the answer once a re-install still reports a version under
 the floor, which is what a genuinely pinned or offline environment looks like.
 
+**`unrecognized arguments` can mean the opposite: these skills are the stale
+side, not retalk.** Skills load when the session starts, so a session that began
+before the plugin was updated keeps running the old ones for its whole life, and
+those can name flags that retalk has since renamed or dropped. The symptom looks
+identical to an old retalk, and guessing wrong wastes the fix: waiting for
+retalk to "catch up" to a flag it deliberately removed never resolves. Settle it
+by direction, not by which side you assume is behind:
+```
+retalk <subcommand> --help | grep -- --the-flag   # does this retalk have it at all?
+uv tool list | grep retalk                        # and what version is installed?
+```
+If retalk is **at or above the floor** and the flag is simply absent, the flag is
+gone rather than not yet arrived, and the plugin is what is stale. Use what
+`--help` shows, tell the user their agent-talk is behind, and run the plugin
+update below. `--save-messages` is the known instance: it was retalk's old name
+for `--save`, renamed in July 2026, and skills older than 0.2.0 still spell it
+the old way. **Trust `--help` over any skill text, including this one**, and
+never re-add a flag retalk does not list.
+
 **One capability is not the client's to have: `invite watch` also needs a
 relay on retalk 0.3.0 or newer.** Watching reads the mailbox without consuming
 it, and an older relay cannot do that, so the watcher refuses to start rather
