@@ -1,5 +1,5 @@
 """Static checks on the agent-talk plugin (no external deps)."""
-import glob, json, os, pathlib, subprocess, time, unittest
+import glob, json, os, pathlib, re, subprocess, time, unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKILLS = sorted(glob.glob(os.path.join(ROOT, "skills", "*", "SKILL.md")))
 EXPECTED = ["init", "id", "add", "verify", "contacts", "send", "receive",
@@ -276,6 +276,33 @@ class TestBinScripts(unittest.TestCase):
 
 
 class TestDocumentedCommandsExist(unittest.TestCase):
+    def test_never_names_the_removed_save_messages_flag(self):
+        # retalk renamed --save-messages to --save in July 2026, and the old
+        # spelling is now rejected outright ("unrecognized arguments"). Skills
+        # older than 0.2.0 still carry it, and an agent reading one of those
+        # concluded retalk was behind the doc rather than the reverse, so it
+        # waited for a flag that had been deliberately removed.
+        #
+        # RETALK_SAVE_MESSAGE, the environment variable, is a different thing
+        # and still current, so match the flag exactly rather than the string.
+        # One mention is legitimate: init explains the skew this caused, and
+        # naming the flag is the point there. Allow only a line that marks it
+        # as the old name, the same exemption the retalk --version guard uses.
+        pattern = re.compile(r"--save-messages\b")
+        for f in SKILLS + [os.path.join(ROOT, "README.md")] + sorted(
+                glob.glob(os.path.join(ROOT, "docs", "*.md"))) + sorted(
+                glob.glob(os.path.join(ROOT, "bin", "*"))):
+            if not os.path.isfile(f):
+                continue
+            for n, ln in enumerate(pathlib.Path(f).read_text(
+                    errors="replace").splitlines(), 1):
+                if not pattern.search(ln):
+                    continue
+                self.assertIn(
+                    "old name", ln,
+                    f"{f}:{n} names --save-messages, which retalk removed; "
+                    f"use --save: {ln.strip()}")
+
     def test_never_tells_the_agent_to_run_retalk_version(self):
         # retalk has no --version flag; the call exits 2 with an argparse usage
         # error and prints nothing useful. It was the skill's own recovery
