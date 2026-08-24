@@ -275,6 +275,55 @@ class TestBinScripts(unittest.TestCase):
                           f"{r.stdout}")
 
 
+class TestRelayChoiceIsNotAFootgun(unittest.TestCase):
+    """A localhost relay must never be offered without its cost.
+
+    `init` writes the relay into the identity once and no command changes it
+    later, and the saved value outranks `retalk config --relay`. So an identity
+    created against 127.0.0.1 is unreachable from anywhere else for as long as
+    it exists, and its `id --card` advertises localhost to whoever receives it.
+    The relay skill used to list "Local only" first as "quickest", with no hint
+    that the choice was permanent, and that is exactly how one got created.
+    """
+
+    @staticmethod
+    def _flat(*parts):
+        # These files are hard-wrapped, so a warning sentence routinely spans a
+        # newline, and inside a blockquote each line also carries a "> ".
+        # Strip the markers, then collapse whitespace, or the test breaks on
+        # reflow rather than on the thing it guards.
+        raw = pathlib.Path(ROOT, *parts).read_text()
+        return re.sub(r"\s+", " ", re.sub(r"(?m)^\s*>\s?", "", raw))
+
+    def test_local_relay_is_offered_only_with_the_permanence_warning(self):
+        text = self._flat("skills", "relay", "SKILL.md")
+        self.assertIn("Local only", text)
+        self.assertIn("no command to change it", text,
+                      "relay skill offers a local relay without saying the "
+                      "choice is permanent for the identity")
+        self.assertIn("throwaway", text.lower(),
+                      "relay skill does not scope local-only to identities "
+                      "the user is willing to recreate")
+
+    def test_init_warns_before_baking_in_a_relay(self):
+        text = self._flat("skills", "init", "SKILL.md")
+        self.assertIn("permanent for this identity", text,
+                      "init asks for a relay without saying the answer is "
+                      "written into the identity for good")
+        self.assertRegex(text, r"127\.0\.0\.1|localhost",
+                         "init never warns against creating an identity on a "
+                         "local relay")
+
+    def test_moving_a_relay_names_the_env_var_not_just_the_flag(self):
+        # `--relay` fixes one command; a stranded identity needs every command
+        # fixed, and a follower started without it silently polls the old relay.
+        text = self._flat("skills", "init", "SKILL.md")
+        self.assertIn("RETALK_RELAY", text,
+                      "init explains moving a relay without naming the "
+                      "environment variable that actually overrides the "
+                      "saved value")
+
+
 class TestDocumentedCommandsExist(unittest.TestCase):
     def test_never_names_the_removed_save_messages_flag(self):
         # retalk renamed --save-messages to --save in July 2026, and the old
