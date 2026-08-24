@@ -15,15 +15,33 @@ the server's **`RETALK_SERVER_AUDIENCE` must exactly equal the URL clients use a
 request fail with `bad signature`.
 
 ## setup
+
+> **Before offering any of these, know what the choice costs.** `retalk init`
+> writes the relay URL into the identity **once**, and there is no command to
+> change it afterwards. Every later command resolves `--relay`, then
+> `RETALK_RELAY`, then that saved value, then the owner-wide config — so a
+> saved URL **beats `retalk config --relay`** and quietly wins forever. An
+> identity created against `http://127.0.0.1:8766` is therefore not reachable
+> by anyone off that machine, ever, and its `id --card` advertises localhost to
+> whoever it is sent to. The only repairs are exporting `RETALK_RELAY` for
+> every session, or creating a new identity, which means a new fingerprint and
+> re-adding by every peer.
+
 1. **AskUserQuestion — where to host?**
-   - **Local only** — quickest; testing or same-machine agents; no public URL.
-   - **Local + Cloudflare tunnel** — run the server locally but get a public
-     HTTPS URL with no cloud VM: a free **quick tunnel** (no account/domain) or
-     a **named tunnel** (your domain, stable). Full steps: `cloudflare.md`.
+   - **Local + Cloudflare tunnel (recommended if you need your own)** — run the
+     server locally but get a public HTTPS URL with no cloud VM: a free **quick
+     tunnel** (no account/domain) or a **named tunnel** (your domain, stable).
+     Full steps: `cloudflare.md`.
    - **Hugging Face Space** — free public HTTPS, zero infra; sleeps when idle,
      no persistent disk. Full steps: `huggingface.md`.
    - **GCP VM** — durable, ~$3.65–10/mo; HTTPS from Caddy on the VM (own
      domain) or a Cloudflare tunnel. Full steps: `gcp.md`.
+   - **Local only** — a relay reachable from nothing but this machine. Offer it
+     **last and with the warning above**, and only for a throwaway identity you
+     are willing to recreate: relay development, or two agents on one box that
+     will never talk to anyone else. It is not the quick way to get started —
+     the shared public relay in **init** is, and it needs no server at all.
+     Never pick this for an identity the user may later want to share.
 2. Follow that host's reference file. Then hand the user the **audience URL** to
    use as the `--relay` URL in the **init** skill.
 3. **Optional hardening** — AskUserQuestion whether to add any of: mailbox caps
@@ -71,11 +89,21 @@ else Local) — ask if unsure:
 
 ## Pointing existing identities at a changed relay
 A relay can change after a user was created (you switched hosts, or its URL
-moved). retalk has no command to re-save a user's saved relay, so for each
-affected user: update its record (`echo "<NEW_URL>" > "<user>/relay"`), pass
-`--relay <URL>` (or `--relay "$(cat "<user>/relay")"`) on commands, and re-share
-the new URL with peers (the **init**/**add** invite includes it). Both ends must
-use the **same** URL (= the server's audience).
+moved). retalk has no command to re-save a user's saved relay, and that saved
+value outranks `retalk config --relay`, so the machine-wide default will not
+move a stranded identity. **Export `RETALK_RELAY`** instead: it overrides the
+saved value for every command in that environment, where `--relay` covers only
+the one call. Long-running processes matter most, since the follower and the
+invite watcher inherit the environment they were started in and will otherwise
+keep polling the old relay in silence.
+```
+export RETALK_RELAY="<NEW_URL>"          # every retalk call in this session
+echo "<NEW_URL>" > "<user>/relay"        # keep the record in step
+retalk sync --dir "<user>/identity"      # publish keys on the new relay
+```
+Then re-share the new URL with peers (the **init**/**add** invite includes it).
+Both ends must use the **same** URL (= the server's audience), so peers who have
+not moved stay unreachable until they do.
 
 Full host steps live in **cloudflare.md**, **huggingface.md**, and **gcp.md** in
 this folder.

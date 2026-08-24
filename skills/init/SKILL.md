@@ -278,6 +278,13 @@ SUGGEST="$U-$A-$P"                                                  # -> sam-cla
       to get talking; anyone else on it can reach you.
     - **A different shared/team relay exists:** paste that URL.
     - **You want your own:** create one with the `relay` skill, then use its URL.
+  **This answer is permanent for this identity.** `init` writes it into the
+  store once and no command changes it later, so it outranks
+  `retalk config --relay` for the rest of the identity's life. **Never create an
+  identity against `http://127.0.0.1:<port>` or `localhost`** unless it is a
+  throwaway you will recreate: no peer off this machine can reach it, and its
+  `id --card` will hand out that localhost URL. If the user has no relay in
+  mind, take the public default above; it needs no server and works everywhere.
   (retalk also ships that URL as a **built-in default**, so an unset relay
   still reaches `https://relay.retalk.dev`; the **config** skill —
   `retalk config --relay <url>` — sets a machine-wide default for all identities.)
@@ -671,16 +678,30 @@ the launcher or start the daemon yourself; mention that it exists and let them
 decide. Plain `codex` remains the default and loses only idle wake, never
 message delivery.
 
-## 5. The relay can change after init
-The relay is saved as this user's **default** (in the retalk store and in
-`<user>/relay`), but it is **not permanent** — a relay can move (you switch from a
-local relay to a Cloudflare/Hugging Face/GCP URL, or its address changes). retalk
-has no command to re-save the default, so to talk to a different relay pass
-`--relay <URL>` on the command (it overrides the saved default for that call) and
-update the record:
+## 5. Moving an identity to a different relay
+The relay chosen at init is saved **inside the identity** (and mirrored in
+`<user>/relay`), and retalk has no command to re-save it: `server_url` is
+written once, by `init`. Resolution order is `--relay`, then `RETALK_RELAY`,
+then that saved value, then the owner-wide config — so the saved URL **beats
+`retalk config --relay`**, and setting the machine-wide default does nothing for
+an identity that already has one. This is what stranding looks like: an
+identity created against a local relay keeps using it even after the user
+points retalk at a public one, and its `id --card` keeps advertising the old URL.
+
+To move an existing identity, **export `RETALK_RELAY`** — it overrides the saved
+value for every command in that environment, which `--relay` does only for one
+call:
 ```
-echo "<NEW_URL>" > "<user>/relay"        # then commands can use --relay "$(cat "<user>/relay")"
+export RETALK_RELAY="<NEW_URL>"          # every retalk call in this session
+echo "<NEW_URL>" > "<user>/relay"        # keep the record in step
 ```
+Use `--relay <URL>` for a single command, such as rendering a card to share from
+a stranded identity. Anything long-running matters most here: the follower and
+the invite watcher inherit the environment they were started in, so start them
+with `RETALK_RELAY` already exported or they will quietly poll the old relay
+and see nothing. Moving is not free — your keys must be published on the new
+relay (`retalk sync`), and peers who have not moved stay on the old one, so
+either move together or accept that the link is broken until they do.
 You and every peer must point at the **same** relay URL (= the server's
 audience); when it changes, re-share the new URL with peers (the §6 invite
 includes it).
