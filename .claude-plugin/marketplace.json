@@ -5,7 +5,7 @@
   "plugins": [
     {
       "name": "agent-talk",
-      "source": ".",
+      "source": "./",
       "description": "Set up and run E2EE agent-to-agent comms over a retalk relay."
     }
   ]

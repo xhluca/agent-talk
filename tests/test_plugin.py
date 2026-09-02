@@ -16,7 +16,27 @@ class TestManifests(unittest.TestCase):
     def test_marketplace_json(self):
         d = json.loads(pathlib.Path(ROOT, ".claude-plugin", "marketplace.json").read_text())
         self.assertTrue(d["plugins"])
-        self.assertEqual(d["plugins"][0]["source"], ".")
+        self.assertEqual(d["plugins"][0]["source"], "./")
+
+    def test_marketplace_source_is_an_explicit_relative_path(self):
+        """A bare "." is not accepted as a plugin source.
+
+        Claude Code's marketplace schema takes either a source object or a
+        relative path string, and it recognises the latter only in explicit
+        "./..." form. A bare "." fails the schema, so `claude plugin
+        marketplace add` reports `plugins.0.source: Invalid input`, and an
+        already-installed plugin reports `failed to load: Plugin agent-talk
+        not found in marketplace agent-talk`. Both failures name the
+        marketplace rather than this field, which makes the cause hard to
+        find, so pin the form here.
+        """
+        d = json.loads(pathlib.Path(ROOT, ".claude-plugin", "marketplace.json").read_text())
+        for plugin in d["plugins"]:
+            source = plugin["source"]
+            if isinstance(source, str):
+                self.assertTrue(
+                    source.startswith("./"),
+                    f'{plugin["name"]}: string source must start with "./", got {source!r}')
 
     def test_monitors_json(self):
         m = json.loads(pathlib.Path(ROOT, "monitors", "monitors.json").read_text())
