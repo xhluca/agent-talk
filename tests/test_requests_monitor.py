@@ -14,6 +14,8 @@ Asserts:
      stamps each copy with its own arrival time, while a genuinely different
      record still gets through.
   5. Without a session id the monitor idles instead of exiting.
+  6. An unsubstituted `${CLAUDE_SESSION_ID}` falls back to the value Claude Code
+     actually exports, `CLAUDE_CODE_SESSION_ID`, rather than turning push off.
 
 The records are the shapes `retalk invite watch` emits. They carry no message
 id, which is why the monitor keys its dedupe on the line with `ts` removed
@@ -106,9 +108,16 @@ class TestRequestsMonitor(unittest.TestCase):
         print("PASS 4: a re-seen record collapses, a new one still surfaces")
 
     def test_idles_without_session_id(self):
+        # The genuine "no session id anywhere" case. BOTH names must be scrubbed:
+        # this process inherits CLAUDE_CODE_SESSION_ID when the suite is run from
+        # a Claude Code session, and leaving it set would exercise the fallback
+        # and block on a missing map -- emitting nothing for the wrong reason.
         home = tempfile.mkdtemp()
+        env = dict(os.environ, HOME=home)
+        for k in ("CLAUDE_SESSION_ID", "CLAUDE_CODE_SESSION_ID"):
+            env.pop(k, None)
         mon = subprocess.Popen(["bash", MON, "${CLAUDE_SESSION_ID}"],
-                               env=dict(os.environ, HOME=home),
+                               env=env,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.DEVNULL, text=True)
         self.addCleanup(self.stop, mon)
@@ -117,6 +126,31 @@ class TestRequestsMonitor(unittest.TestCase):
                          "monitor should emit nothing without a session id")
         self.assertIsNone(mon.poll(), "monitor should keep idling, not exit")
         print("PASS 5: no session id means it idles rather than exiting")
+
+    def test_falls_back_to_claude_code_session_id(self):
+        # Claude Code substitutes ${CLAUDE_PLUGIN_ROOT} into a monitor's command
+        # line but NOT ${CLAUDE_SESSION_ID}, so the literal reached the guard and
+        # push was off for the whole session -- silently. The value is exported
+        # as CLAUDE_CODE_SESSION_ID; resolve it from there, as bin/follow.sh and
+        # bin/invite-watch.sh already do.
+        home = tempfile.mkdtemp()
+        sid = "s.req.fallback"
+        udir = os.path.join(home, "proj", ".agent-talk", "users", "alice")
+        os.makedirs(os.path.join(udir, "sessions"))
+        os.makedirs(os.path.join(home, ".agent-talk", "by-session"))
+        mon = subprocess.Popen(["bash", MON, "${CLAUDE_SESSION_ID}"],
+                               env=dict(os.environ, HOME=home,
+                                        CLAUDE_CODE_SESSION_ID=sid),
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.DEVNULL, text=True)
+        self.addCleanup(self.stop, mon)
+        time.sleep(1)                                   # monitor waits for map
+        pathlib.Path(home, ".agent-talk", "by-session", sid).write_text(udir + "\n")
+        time.sleep(3)                                   # map read, tail attached
+        pathlib.Path(udir, "sessions", sid + ".requests.ndjson").write_text(
+            ACCEPTED + "\n")
+        self.assertEqual(self.read_lines(mon, 5), [ACCEPTED])
+        print("PASS 6: the session id is resolved from CLAUDE_CODE_SESSION_ID")
 
 
 if __name__ == "__main__":
