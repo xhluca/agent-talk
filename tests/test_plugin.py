@@ -19,16 +19,17 @@ class TestManifests(unittest.TestCase):
         self.assertEqual(d["plugins"][0]["source"], "./")
 
     def test_marketplace_source_is_an_explicit_relative_path(self):
-        """A bare "." is not accepted as a plugin source.
+        """Pin the explicit "./" form for a relative plugin source.
 
-        Claude Code's marketplace schema takes either a source object or a
-        relative path string, and it recognises the latter only in explicit
-        "./..." form. A bare "." fails the schema, so `claude plugin
-        marketplace add` reports `plugins.0.source: Invalid input`, and an
-        already-installed plugin reports `failed to load: Plugin agent-talk
-        not found in marketplace agent-talk`. Both failures name the
-        marketplace rather than this field, which makes the cause hard to
-        find, so pin the form here.
+        Claude Code's marketplace schema accepts a source object or a
+        relative-path string. Whether a bare "." satisfies the string form
+        has varied by version: on 2.1.267 it validates, but a contributor on
+        the same plugin version saw `plugins.0.source: Invalid input` from
+        `claude plugin marketplace add`, and once the marketplace was already
+        registered the failure moved to `failed to load: Plugin agent-talk not
+        found in marketplace agent-talk`, which blames the marketplace rather
+        than this field. "./" is accepted everywhere the two were compared, so
+        pin the form that is never ambiguous.
         """
         d = json.loads(pathlib.Path(ROOT, ".claude-plugin", "marketplace.json").read_text())
         for plugin in d["plugins"]:
@@ -37,6 +38,19 @@ class TestManifests(unittest.TestCase):
                 self.assertTrue(
                     source.startswith("./"),
                     f'{plugin["name"]}: string source must start with "./", got {source!r}')
+
+    def test_monitors_do_not_pass_the_unsubstituted_session_id(self):
+        # Claude Code substitutes ${CLAUDE_PLUGIN_ROOT} into a monitor command
+        # but never ${CLAUDE_SESSION_ID}. Passing it meant $1 arrived as that
+        # literal, the script read it as "no session id", and push delivery was
+        # silently off for every session. The scripts read
+        # CLAUDE_CODE_SESSION_ID from the environment instead, so the argument
+        # must not come back.
+        m = json.loads(pathlib.Path(ROOT, "monitors", "monitors.json").read_text())
+        for entry in m:
+            self.assertNotIn("CLAUDE_SESSION_ID", entry["command"],
+                             f"{entry['name']}: passes ${{CLAUDE_SESSION_ID}}, "
+                             "which Claude Code never substitutes")
 
     def test_monitors_json(self):
         m = json.loads(pathlib.Path(ROOT, "monitors", "monitors.json").read_text())
