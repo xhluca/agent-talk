@@ -18,11 +18,18 @@
 # request spool, `<user>/sessions/<session-id>.requests.ndjson`, which the
 # spool writer fills when run with `--stream requests`.
 #
-# $1 is ${CLAUDE_SESSION_ID}; if it did not substitute or is empty, it idles
+# $1 is ${CLAUDE_SESSION_ID}; unsubstituted or empty it falls back to
+# CLAUDE_CODE_SESSION_ID, and idles only if that is empty too
 # (push off — the request list can still be read on demand). Diagnostics to
 # stderr; only request lines go to stdout.
 set -uo pipefail
 sid="${1:-}"
+# Claude Code substitutes ${CLAUDE_PLUGIN_ROOT} into a monitor's command line but
+# not ${CLAUDE_SESSION_ID}, so $1 can arrive as that literal. The same value is
+# exported as CLAUDE_CODE_SESSION_ID; take it from there, as bin/follow.sh and
+# bin/invite-watch.sh already do. Without this, push is off for the whole
+# session and nothing says so.
+case "$sid" in ""|*'${'*) sid="${CLAUDE_CODE_SESSION_ID:-}";; esac
 case "$sid" in ""|*'${'*) exec tail -f /dev/null;; esac      # no session id -> no push
 sid="$(printf '%s' "$sid" | tr -c 'A-Za-z0-9._-' '_')"
 map="$HOME/.agent-talk/by-session/$sid"
