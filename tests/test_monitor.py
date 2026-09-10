@@ -78,10 +78,47 @@ class TestMonitor(unittest.TestCase):
         finally:
             mon.terminate(); mon.wait(timeout=5)
 
-    def test_idles_without_session_id(self):
+    def test_falls_back_to_claude_code_session_id(self):
+        # Claude Code substitutes ${CLAUDE_PLUGIN_ROOT} into a monitor's command
+        # line but NOT ${CLAUDE_SESSION_ID}: the literal arrives unexpanded, and
+        # the guard then turned push off for the whole session -- silently, which
+        # is why it went unnoticed. The same value IS exported as
+        # CLAUDE_CODE_SESSION_ID, so resolve it from there, as bin/follow.sh and
+        # bin/invite-watch.sh already do.
         home = tempfile.mkdtemp()
+        sid = "s.test.fallback"
+        udir = os.path.join(home, "proj", ".agent-talk", "users", "alice")
+        os.makedirs(os.path.join(udir, "sessions"))
+        os.makedirs(os.path.join(home, ".agent-talk", "by-session"))
         mon = subprocess.Popen(["bash", MON, "${CLAUDE_SESSION_ID}"],
-                               env=dict(os.environ, HOME=home),
+                               env=dict(os.environ, HOME=home,
+                                        CLAUDE_CODE_SESSION_ID=sid),
+                               stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        try:
+            time.sleep(1)  # monitor waits for the map
+            pathlib.Path(home, ".agent-talk", "by-session", sid).write_text(udir + "\n")
+            time.sleep(3)  # monitor reads map + attaches tail
+            pathlib.Path(udir, "sessions", sid + ".ndjson").write_text(
+                '{"id":"fb1","text":"fell back"}\n')
+            line = ""
+            if select.select([mon.stdout], [], [], 5)[0]:
+                line = mon.stdout.readline().strip()
+            self.assertEqual(line, '{"id":"fb1","text":"fell back"}')
+        finally:
+            mon.terminate(); mon.wait(timeout=5)
+
+    def test_idles_without_session_id(self):
+        # The genuine "no session id anywhere" case. BOTH names must be scrubbed:
+        # this process inherits CLAUDE_CODE_SESSION_ID when the suite is run from
+        # a Claude Code session, and leaving it set would exercise the fallback
+        # and block on a missing map -- emitting nothing for the wrong reason.
+        # Same scrubbing as tests/test_plugin.py.
+        home = tempfile.mkdtemp()
+        env = dict(os.environ, HOME=home)
+        for k in ("CLAUDE_SESSION_ID", "CLAUDE_CODE_SESSION_ID"):
+            env.pop(k, None)
+        mon = subprocess.Popen(["bash", MON, "${CLAUDE_SESSION_ID}"],
+                               env=env,
                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
         try:
             time.sleep(1)

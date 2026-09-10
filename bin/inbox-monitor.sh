@@ -10,11 +10,20 @@
 # session whose follower predates the spool writer keeps delivering. Records
 # reaching both files are emitted once: the dedupe below keys on the message id.
 #
-# $1 is ${CLAUDE_SESSION_ID}; if it did not substitute or is empty, it idles
+# The session id comes from CLAUDE_CODE_SESSION_ID, which Claude Code exports
+# into the monitor's environment. An optional $1 overrides it (tests pass one);
+# with neither, it idles
 # (push off — pull via the `receive` skill still works). Diagnostics to stderr;
 # only message lines go to stdout.
 set -uo pipefail
 sid="${1:-}"
+# Claude Code substitutes ${CLAUDE_PLUGIN_ROOT} into a monitor's command line but
+# NOT ${CLAUDE_SESSION_ID}: that literal used to arrive as $1, the guard below
+# read it as "no session id", and push was silently off for every session.
+# monitors.json no longer passes it. The value Claude Code does export is
+# CLAUDE_CODE_SESSION_ID, so that is the primary source, as in bin/follow.sh
+# and bin/invite-watch.sh; $1 stays as an explicit override.
+case "$sid" in ""|*'${'*) sid="${CLAUDE_CODE_SESSION_ID:-}";; esac
 case "$sid" in ""|*'${'*) exec tail -f /dev/null;; esac      # no session id -> no push
 sid="$(printf '%s' "$sid" | tr -c 'A-Za-z0-9._-' '_')"
 map="$HOME/.agent-talk/by-session/$sid"
