@@ -52,6 +52,17 @@ class TestManifests(unittest.TestCase):
                              f"{entry['name']}: passes ${{CLAUDE_SESSION_ID}}, "
                              "which Claude Code never substitutes")
 
+    def test_monitors_arm_on_init_not_at_session_start(self):
+        # A monitor armed "always" runs from session start in every session,
+        # including the many that never run init. Until init writes the
+        # session->user map the scripts just poll for it, and Claude Code shows
+        # a session with a live monitor as "working", so idle sessions never
+        # read as idle. Arm on init instead.
+        m = json.loads(pathlib.Path(ROOT, "monitors", "monitors.json").read_text())
+        for entry in m:
+            self.assertEqual(entry.get("when"), "on-skill-invoke:agent-talk:init",
+                             f"{entry['name']}: must arm on init, not at session start")
+
     def test_monitors_json(self):
         m = json.loads(pathlib.Path(ROOT, "monitors", "monitors.json").read_text())
         self.assertTrue(any(x.get("name") == "retalk-inbox" for x in m))
