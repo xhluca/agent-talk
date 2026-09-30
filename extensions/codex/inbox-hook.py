@@ -36,6 +36,11 @@ import json
 import os
 import sys
 
+if os.name == "nt":
+    import msvcrt
+else:
+    import fcntl
+
 EVENTS = {
     "session-start": "SessionStart",
     "user-prompt": "UserPromptSubmit",
@@ -89,7 +94,26 @@ def write_state(spool, offset, ids, sha, sha_len):
 
 
 def drain(spool):
-    """Return the messages appended since the last run, advancing the cursor."""
+    """Serialize cursor reads and updates across hooks sharing a directory."""
+    try:
+        # Lock a stable sibling, not the state file: write_state replaces the
+        # state inode. Hold it across reading the cursor AND committing it so
+        # overlapping hooks cannot deliver the same records or lose entries
+        # belonging to other sessions in the shared state dictionary.
+        fd = os.open(state_path(spool) + ".lock",
+                     os.O_WRONLY | os.O_CREAT, 0o600)
+        with os.fdopen(fd, "wb") as lock:
+            if os.name == "nt":
+                msvcrt.locking(lock.fileno(), msvcrt.LK_LOCK, 1)
+            else:
+                fcntl.flock(lock, fcntl.LOCK_EX)
+            return drain_locked(spool)
+    except OSError:
+        return []  # leave messages pending if bookkeeping is unavailable
+
+
+def drain_locked(spool):
+    """Read and advance a cursor while holding its directory's state lock."""
     offset, seen, sha, sha_len = read_state(spool)
     try:
         with open(spool, "rb") as fh:

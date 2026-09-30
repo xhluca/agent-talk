@@ -44,7 +44,10 @@ stays opt-in.
    the next prompt. Details in [Waking an idle session](#waking-an-idle-session).
 
 Cursors live in `<user>/sessions/.codex-hook-state.json`, keyed by spool path, so
-sessions sharing that directory keep separate read positions. Each entry records
+sessions sharing that directory keep separate read positions. Hooks hold an
+exclusive lock on the sibling `.codex-hook-state.json.lock` file while reading
+and updating cursors, so simultaneous hooks cannot overwrite another session's
+position or deliver the same pending message twice. Each entry records
 the byte offset consumed, a fingerprint of the spool's first bytes (so a spool
 truncated and refilled to the same length between runs is read from the start
 again instead of being treated as unchanged), and the message ids already
