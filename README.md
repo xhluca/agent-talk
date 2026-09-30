@@ -94,7 +94,8 @@ the retalk CLI directly.
 Incoming messages surface on their own once the `init` skill installs the Codex
 hooks: anything waiting appears when a session starts and when you submit a
 prompt, and a message that lands while the agent is working is handled as soon
-as that turn ends. Codex asks you to approve the hooks once, under `/hooks`.
+as that turn ends. Concurrent hooks serialize cursor updates to avoid duplicate
+delivery. Codex asks you to approve the hooks once, under `/hooks`.
 
 **Optional, to wake an idle session.** Hooks cannot reach a session sitting idle
 at the prompt, because a hook only runs when the session itself calls it. If you

@@ -14,12 +14,17 @@ Asserts:
      not delivered again.
 """
 
+import concurrent.futures
 import json
+import select
 import os
 import subprocess
 import sys
 import tempfile
 import unittest
+
+if os.name != "nt":
+    import fcntl
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HOOK = os.path.join(ROOT, "extensions", "codex", "inbox-hook.py")
@@ -54,6 +59,57 @@ class TestInboxHookCursor(unittest.TestCase):
     def write_spool(self, content):
         with open(self.spool, "w") as fh:
             fh.write(content)
+
+    @unittest.skipIf(os.name == "nt", "POSIX lock and pipe readiness probe")
+    def test_shared_cursor_lock_is_respected(self):
+        self.write_spool(record_line("m1", "waiting for the cursor lock"))
+        lock_path = os.path.join(os.path.dirname(self.spool),
+                                 ".codex-hook-state.json.lock")
+        with open(lock_path, "a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            proc = subprocess.Popen(
+                [sys.executable, HOOK, "stop"], stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                env=dict(os.environ, AGENT_TALK_CODEX_SPOOLS=self.spool))
+            try:
+                proc.stdin.write("{}")
+                proc.stdin.close()
+                proc.stdin = None
+                readable, _, _ = select.select([proc.stdout], [], [], 0.5)
+                self.assertEqual(readable, [],
+                                 "hook delivered before acquiring cursor lock")
+            finally:
+                fcntl.flock(lock, fcntl.LOCK_UN)
+                stdout, stderr = proc.communicate(timeout=10)
+            self.assertEqual(proc.returncode, 0, stderr)
+            self.assertIn("waiting for the cursor lock", stdout)
+        self.assertEqual(self.run_hook(), [])
+
+    def test_parallel_hooks_deliver_each_spool_once(self):
+        # All spools share one cursor file. Concurrent hooks must preserve
+        # other sessions' entries as well as deduplicating their own spool.
+        spools = []
+        for i in range(8):
+            spool = os.path.join(os.path.dirname(self.spool), f"s{i}.ndjson")
+            with open(spool, "w") as fh:
+                fh.write(record_line(f"m{i}", f"question {i}"))
+            spools.append(spool)
+
+        def run(spool):
+            return subprocess.run(
+                [sys.executable, HOOK, "stop"], input="{}",
+                capture_output=True, text=True, timeout=10,
+                env=dict(os.environ, AGENT_TALK_CODEX_SPOOLS=spool))
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=16) as pool:
+            results = list(pool.map(run, spools * 2))
+        for result in results:
+            self.assertEqual(result.returncode, 0, result.stderr)
+        output = "".join(result.stdout for result in results)
+        for i, spool in enumerate(spools):
+            self.assertEqual(output.count(f"question {i}"), 1)
+            self.assertEqual(run(spool).stdout, "",
+                             "another session overwrote this spool's cursor")
 
     def test_append_delivers_once(self):
         self.write_spool(record_line("m1", "first question"))
