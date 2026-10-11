@@ -15,6 +15,22 @@ permissions:
   contents: read
 
 jobs:
+  windows-inbox-hook:
+    name: inbox hook (native Windows, no auth)
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Test native spool paths and cursor locking
+        run: python -m unittest discover -s tests -p test_inbox_hook.py -v
+
   validate:
     name: validate (deterministic, no LLM)
     runs-on: ubuntu-latest

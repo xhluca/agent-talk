@@ -647,7 +647,8 @@ in step 4. Any unique id works, because the spool is just a file and the launch
 below names its path; the thread id is simply one that will not collide.
 
 Then relaunch Codex with that spool, since environment variables must be set
-before the process starts:
+before the process starts. Separate multiple paths with `:` on POSIX or `;`
+on native Windows (preserving drive letters). The POSIX shell example is:
 ```
 # add this user's spool to any already set, then start codex:
 AGENT_TALK_CODEX_SPOOLS="$(printf '%s%s' "${AGENT_TALK_CODEX_SPOOLS:+$AGENT_TALK_CODEX_SPOOLS:}" "<user>/sessions/<thread-id>.ndjson")" codex

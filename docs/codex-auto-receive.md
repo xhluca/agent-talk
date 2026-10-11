@@ -44,13 +44,20 @@ stays opt-in.
    the next prompt. Details in [Waking an idle session](#waking-an-idle-session).
 
 Cursors live in `<user>/sessions/.codex-hook-state.json`, keyed by spool path, so
-sessions sharing that directory keep separate read positions. Each entry records
+sessions sharing that directory keep separate read positions. Hooks hold an
+exclusive lock on the sibling `.codex-hook-state.json.lock` file while reading
+and updating cursors, so simultaneous hooks cannot overwrite another session's
+position or concurrently report the same pending message. Lock acquisition is
+nonblocking: a busy lock or failed cursor write leaves messages pending for the
+next hook event. Each entry records
 the byte offset consumed, a fingerprint of the spool's first bytes (so a spool
 truncated and refilled to the same length between runs is read from the start
 again instead of being treated as unchanged), and the message ids already
 delivered. The cursor advances before a message is handed over, which is what
 keeps a `Stop` hook from reporting the same message on every turn and blocking
 forever.
+This is not crash-proof exactly-once delivery: a process that stops after the
+cursor commits but before Codex receives its output can lose that output.
 
 ## Setup
 
@@ -73,8 +80,9 @@ to watch:
 AGENT_TALK_CODEX_SPOOLS="<user>/sessions/<session-id>.ndjson" codex
 ```
 
-The variable takes a colon-separated list, so one session can watch several
-users. With it unset the hook exits immediately, so installing the hooks does not
+The variable takes a list separated by `:` on POSIX or `;` on native Windows,
+so one session can watch several users without splitting Windows drive letters.
+With it unset the hook exits immediately, so installing the hooks does not
 change any session that has not opted in.
 
 Codex will not run a hook it has not been told to trust. The first session after
